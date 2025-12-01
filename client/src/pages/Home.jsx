@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { toast } from 'react-toastify'; 
+import { toast } from 'react-toastify';
 import PetCard from '../components/PetCard';
 import { getPets, addPetToStorage, deletePetFromStorage } from '../dataManager';
 
@@ -14,8 +14,9 @@ const Home = () => {
   const CLOUD_NAME = "dggoadwam"; 
   const UPLOAD_PRESET = "pethealth_app"; 
 
-  // Cálculo de estadísticas
+  // Filtros de estadísticas
   const totalPets = pets.length;
+  // Usamos 'type' para filtrar porque así lo guardamos en el estado
   const totalDogs = pets.filter(p => p.type === 'Perro').length;
   const totalCats = pets.filter(p => p.type === 'Gato').length;
 
@@ -26,6 +27,7 @@ const Home = () => {
       if (Array.isArray(data)) setPets(data);
       else setPets([]); 
     } catch (error) {
+      console.error(error); 
       toast.error("Error conectando con el servidor 🔴");
     } finally {
       setLoading(false);
@@ -50,9 +52,11 @@ const Home = () => {
             toast.info("Foto subida correctamente 📸");
         }
     } catch (error) {
+        console.error(error);
         toast.error("Error al subir imagen");
     } finally {
         setUploading(false);
+        e.target.value = ''; // UX: Limpia el input
     }
   };
 
@@ -63,7 +67,10 @@ const Home = () => {
 
     const newPet = {
       name: form.name.value,
-      species: form.species.value,
+      // --- CORRECCIÓN CRÍTICA PARA EL ERROR 500 ---
+      type: form.species.value,    // Necesario para que el Frontend filtre (Perro/Gato)
+      species: form.species.value, // Necesario para que el Backend guarde en la BD
+      // -------------------------------------------
       breed: form.breed.value,
       birth_date: form.birth_date.value,
       gender: form.gender.value,
@@ -81,7 +88,8 @@ const Home = () => {
       setImageUrl('');
       toast.success("¡Mascota registrada! 🎉");
     } catch (error) {
-      toast.error("Error al guardar");
+      console.error(error);
+      toast.error("Error al guardar (Revisa la consola)");
     }
   };
 
@@ -127,6 +135,7 @@ const Home = () => {
         </div>
       )}
 
+      {/* MODAL CON SUBIDA DE IMAGEN */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 backdrop-blur-sm p-4">
           <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">

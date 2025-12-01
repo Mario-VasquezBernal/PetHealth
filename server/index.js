@@ -7,19 +7,19 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ⚠️ 1. MANEJO DE RUTAS (DEBE IR PRIMERO)
+// RUTAS
 app.use("/auth", require("./routes/auth")); 
 app.use("/vet", require("./routes/vet")); 
 app.use("/appointments", require("./routes/appointments"));
+app.use("/tasks", require("./routes/tasks"));
+app.use("/clinics", require("./routes/clinics")); // <--- RUTA DE CLÍNICAS
 
-// 2. RUTA DE PRUEBA (OPCIONAL, PERO NO DEBE CHOCAR)
+// RUTA DE PRUEBA
 app.get('/', (req, res) => {
-    // Solo responde texto, no HTML
     res.send('Servidor de Mascotas funcionando 🐾'); 
 });
 
-// 3. MANEJO DE ERRORES/404 (OPCIONAL, PERO DEBE IR AL FINAL)
-// Si ninguna ruta coincide, responde un 404 en JSON, no HTML.
+// MANEJO DE ERRORES/404
 app.use((req, res, next) => {
     res.status(404).json({ message: "Ruta no encontrada" });
 });

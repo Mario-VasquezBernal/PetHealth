@@ -43,7 +43,48 @@ export const updateUserProfile = async (userData) => {
   return await response.json();
 };
 
-// --- MASCOTAS ---
+// --- CLÍNICAS Y VETERINARIOS ---
+
+// FUNCIÓN PARA OBTENER CLÍNICAS
+export const getClinics = async () => {
+    const response = await fetch(`${API_BASE}/clinics`, { headers: getHeaders() });
+    return await response.json();
+};
+
+// FUNCIÓN PARA CREAR CLÍNICA (REQUERIDA POR EL MODAL)
+export const createClinic = async (clinicData) => {
+    const response = await fetch(`${API_BASE}/clinics`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(clinicData)
+    });
+    return await response.json();
+};
+
+export const getVets = async () => {
+  const response = await fetch(`${API_BASE}/appointments/vets`, { headers: getHeaders() });
+  return await response.json();
+};
+
+export const createVet = async (vetData) => {
+  const response = await fetch(`${API_BASE}/appointments/vets`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(vetData)
+  });
+  return await response.json();
+};
+// En dataManager.js
+
+export const deleteClinic = async (id) => {
+    // Asumimos que tu backend recibe peticiones DELETE en /clinics/ID
+    await fetch(`${API_BASE}/clinics/${id}`, { 
+        method: 'DELETE', 
+        headers: getHeaders() 
+    });
+    return await getClinics(); // Devolvemos la lista actualizada
+};
+// --- MASCOTAS Y CITAS ---
 export const getPets = async () => {
   const response = await fetch(`${API_BASE}/vet`, { headers: getHeaders() });
   if (response.status === 403) { localStorage.removeItem('token'); return []; }
@@ -79,22 +120,6 @@ export const deletePetFromStorage = async (id) => {
   return await getPets();
 };
 
-// --- CITAS & VETERINARIOS ---
-export const getVets = async () => {
-  const response = await fetch(`${API_BASE}/appointments/vets`, { headers: getHeaders() });
-  return await response.json();
-};
-
-// NUEVA FUNCIÓN PARA CREAR VETERINARIO
-export const createVet = async (vetData) => {
-  const response = await fetch(`${API_BASE}/appointments/vets`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify(vetData)
-  });
-  return await response.json();
-};
-
 export const getAppointments = async () => {
   const response = await fetch(`${API_BASE}/appointments`, { headers: getHeaders() });
   return await response.json();
@@ -112,4 +137,36 @@ export const createAppointment = async (apptData) => {
 export const deleteAppointment = async (id) => {
   await fetch(`${API_BASE}/appointments/${id}`, { method: 'DELETE', headers: getHeaders() });
   return await getAppointments();
+};
+export const deleteVet = async (id) => {
+    const response = await fetch(`${API_BASE}/appointments/vets/${id}`, { 
+        method: 'DELETE', 
+        headers: getHeaders() 
+    });
+    
+    // Si el servidor responde con error (ej: 404 o 500), lanzamos una alerta real
+    if (!response.ok) throw new Error("Error al eliminar veterinario");
+
+    return await getVets();
+};
+// En src/dataManager.js
+
+// Obtener historial médico
+export const getMedicalHistory = async (petId) => {
+    const response = await fetch(`${API_BASE}/vet/${petId}/history`, { headers: getHeaders() });
+    if (!response.ok) return [];
+    return await response.json();
+};
+
+
+// Actualizar datos de mascota
+export const updatePet = async (id, petData) => {
+    const response = await fetch(`${API_BASE}/vet/${id}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(petData)
+    });
+    
+    if (!response.ok) throw new Error("Error al actualizar mascota");
+    return await response.json();
 };
