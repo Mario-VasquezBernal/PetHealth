@@ -180,29 +180,95 @@ const Home = () => {
             
             {/* Botón: Agendar Cita */}
             <button 
+              type="button"
               onClick={() => navigate('/appointments')}
-              className="bg-gradient-to-br from-primary-500 to-primary-600 p-4 rounded-card shadow-lg hover:shadow-xl transition-all group text-white flex items-center justify-between flex-1"
+              style={{
+                background: 'linear-gradient(to bottom right, #10B981, #059669)',
+                padding: '1rem',
+                borderRadius: '1rem',
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flex: 1,
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                opacity: 1,
+                visibility: 'visible'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
             >
-              <div>
-                <p className="text-xs text-primary-100 font-medium">Agendar</p>
-                <h3 className="text-base font-bold mt-0.5">Nueva Cita</h3>
+              <div style={{ textAlign: 'left' }}>
+                <p style={{ fontSize: '0.75rem', color: '#D1FAE5', fontWeight: '500', opacity: 1, visibility: 'visible' }}>Agendar</p>
+                <h3 style={{ fontSize: '1rem', fontWeight: 'bold', marginTop: '0.125rem', opacity: 1, visibility: 'visible' }}>Nueva Cita</h3>
               </div>
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                <Calendar className="w-5 h-5" />
+              <div style={{
+                width: '2.5rem',
+                height: '2.5rem',
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                borderRadius: '0.75rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: 1
+              }}>
+                <Calendar style={{ width: '1.25rem', height: '1.25rem', opacity: 1 }} />
               </div>
             </button>
 
             {/* Botón: Nueva Mascota */}
             <button 
+              type="button"
               onClick={() => setIsModalOpen(true)}
-              className="bg-gradient-to-br from-orange-500 to-orange-600 p-4 rounded-card shadow-lg hover:shadow-xl transition-all group text-white flex items-center justify-between flex-1"
+              style={{
+                background: 'linear-gradient(to bottom right, #f97316, #ea580c)',
+                padding: '1rem',
+                borderRadius: '1rem',
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flex: 1,
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                opacity: 1,
+                visibility: 'visible'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
             >
-              <div>
-                <p className="text-xs text-orange-100 font-medium">Registrar</p>
-                <h3 className="text-base font-bold mt-0.5">Nueva Mascota</h3>
+              <div style={{ textAlign: 'left' }}>
+                <p style={{ fontSize: '0.75rem', color: '#fed7aa', fontWeight: '500', opacity: 1, visibility: 'visible' }}>Registrar</p>
+                <h3 style={{ fontSize: '1rem', fontWeight: 'bold', marginTop: '0.125rem', opacity: 1, visibility: 'visible' }}>Nueva Mascota</h3>
               </div>
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                <PlusCircle className="w-5 h-5" />
+              <div style={{
+                width: '2.5rem',
+                height: '2.5rem',
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                borderRadius: '0.75rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: 1
+              }}>
+                <PlusCircle style={{ width: '1.25rem', height: '1.25rem', opacity: 1 }} />
               </div>
             </button>
           </div>
@@ -215,11 +281,34 @@ const Home = () => {
             Mis Mascotas
           </h2>
           <button 
-            onClick={() => setIsModalOpen(true)} 
-            className="flex items-center justify-center gap-2 bg-primary-600 text-white px-5 py-2.5 rounded-xl hover:bg-primary-700 shadow-md transition-all font-medium"
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              backgroundColor: '#059669',
+              color: '#ffffff',
+              padding: '0.625rem 1.25rem',
+              borderRadius: '0.75rem',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: '500',
+              transition: 'all 0.2s',
+              opacity: 1,
+              visibility: 'visible'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#047857';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#059669';
+            }}
           >
-            <PlusCircle className="w-5 h-5" />
-            Nueva Mascota
+            <PlusCircle style={{ width: '1.25rem', height: '1.25rem', opacity: 1 }} />
+            <span style={{ opacity: 1, visibility: 'visible' }}>Nueva Mascota</span>
           </button>
         </div>
 
@@ -235,11 +324,32 @@ const Home = () => {
             <h3 className="text-xl font-bold text-primary-900 mb-2">No tienes mascotas registradas</h3>
             <p className="text-primary-600 mb-6">Comienza agregando tu primera mascota</p>
             <button 
+              type="button"
               onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center gap-2 bg-primary-600 text-white px-6 py-3 rounded-xl hover:bg-primary-700 transition-colors font-medium"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                backgroundColor: '#059669',
+                color: '#ffffff',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '0.75rem',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: '500',
+                transition: 'all 0.2s',
+                opacity: 1,
+                visibility: 'visible'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#047857';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#059669';
+              }}
             >
-              <PlusCircle className="w-5 h-5" />
-              Agregar primera mascota
+              <PlusCircle style={{ width: '1.25rem', height: '1.25rem', opacity: 1 }} />
+              <span style={{ opacity: 1, visibility: 'visible' }}>Agregar primera mascota</span>
             </button>
           </div>
         ) : (
@@ -258,10 +368,27 @@ const Home = () => {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-primary-900">Registrar Mascota</h2>
               <button 
+                type="button"
                 onClick={handleCloseModal}
-                className="p-2 hover:bg-primary-50 rounded-xl transition-colors text-primary-700"
+                style={{
+                  padding: '0.5rem',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  borderRadius: '0.75rem',
+                  cursor: 'pointer',
+                  color: '#047857',
+                  transition: 'all 0.2s',
+                  opacity: 1,
+                  visibility: 'visible'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#F0FDF4';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
               >
-                <X className="w-6 h-6" />
+                <X style={{ width: '1.5rem', height: '1.5rem', opacity: 1 }} />
               </button>
             </div>
 
@@ -389,15 +516,56 @@ const Home = () => {
               <div className="flex gap-3 pt-2">
                 <button 
                   type="button" 
-                  onClick={handleCloseModal} 
-                  className="flex-1 bg-gray-100 text-gray-700 p-3 rounded-xl hover:bg-gray-200 font-medium transition-colors"
+                  onClick={handleCloseModal}
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    padding: '0.75rem',
+                    borderRadius: '0.75rem',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                    transition: 'all 0.2s',
+                    opacity: 1,
+                    visibility: 'visible'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#e5e7eb';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f3f4f6';
+                  }}
                 >
                   Cancelar
                 </button>
                 <button 
-                  type="submit" 
-                  className="flex-1 bg-primary-600 text-white p-3 rounded-xl hover:bg-primary-700 disabled:bg-primary-300 font-medium transition-colors shadow-md" 
+                  type="submit"
                   disabled={uploading}
+                  style={{
+                    flex: 1,
+                    backgroundColor: uploading ? '#86EFAC' : '#059669',
+                    color: '#ffffff',
+                    padding: '0.75rem',
+                    borderRadius: '0.75rem',
+                    border: 'none',
+                    cursor: uploading ? 'not-allowed' : 'pointer',
+                    fontWeight: '500',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    transition: 'all 0.2s',
+                    opacity: 1,
+                    visibility: 'visible'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!uploading) {
+                      e.currentTarget.style.backgroundColor = '#047857';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!uploading) {
+                      e.currentTarget.style.backgroundColor = '#059669';
+                    }
+                  }}
                 >
                   {uploading ? 'Subiendo...' : 'Guardar Mascota'}
                 </button>

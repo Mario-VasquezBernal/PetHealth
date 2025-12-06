@@ -88,19 +88,45 @@ const QRGenerator = ({ petId, petName }) => {
             Genera un código QR para que el veterinario pueda registrar la consulta
           </p>
           <button
+            type="button"
             onClick={handleGenerateQR}
             disabled={loading}
-            className="inline-flex items-center gap-2 bg-primary-600 text-white px-6 py-3 rounded-xl hover:bg-primary-700 disabled:bg-primary-300 transition-colors font-medium shadow-md"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              backgroundColor: loading ? '#86EFAC' : '#059669',
+              color: '#ffffff',
+              padding: '0.75rem 1.5rem',
+              borderRadius: '0.75rem',
+              border: 'none',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontWeight: '500',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              transition: 'all 0.2s',
+              opacity: 1,
+              visibility: 'visible'
+            }}
+            onMouseEnter={(e) => {
+              if (!loading) {
+                e.currentTarget.style.backgroundColor = '#047857';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!loading) {
+                e.currentTarget.style.backgroundColor = '#059669';
+              }
+            }}
           >
             {loading ? (
               <>
-                <RefreshCw className="w-5 h-5 animate-spin" />
-                Generando...
+                <RefreshCw style={{ width: '1.25rem', height: '1.25rem', opacity: 1 }} className="animate-spin" />
+                <span style={{ opacity: 1, visibility: 'visible' }}>Generando...</span>
               </>
             ) : (
               <>
-                <QrCode className="w-5 h-5" />
-                Generar Código QR
+                <QrCode style={{ width: '1.25rem', height: '1.25rem', opacity: 1 }} />
+                <span style={{ opacity: 1, visibility: 'visible' }}>Generar Código QR</span>
               </>
             )}
           </button>
@@ -131,28 +157,101 @@ const QRGenerator = ({ petId, petName }) => {
           {/* Botones de acción */}
           <div className="grid grid-cols-3 gap-3">
             <button
+              type="button"
               onClick={handleDownloadQR}
-              className="flex items-center justify-center gap-2 bg-primary-500 text-white py-2.5 px-4 rounded-xl hover:bg-primary-600 transition-colors text-sm font-medium"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                backgroundColor: '#10B981',
+                color: '#ffffff',
+                padding: '0.625rem 1rem',
+                borderRadius: '0.75rem',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '500',
+                transition: 'all 0.2s',
+                opacity: 1,
+                visibility: 'visible'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#059669';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#10B981';
+              }}
             >
-              <Download className="w-4 h-4" />
-              Descargar
+              <Download style={{ width: '1rem', height: '1rem', opacity: 1 }} />
+              <span style={{ opacity: 1, visibility: 'visible' }}>Descargar</span>
             </button>
             
             <button
+              type="button"
               onClick={handleCopyLink}
-              className="flex items-center justify-center gap-2 bg-orange-500 text-white py-2.5 px-4 rounded-xl hover:bg-orange-600 transition-colors text-sm font-medium"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                backgroundColor: '#f97316',
+                color: '#ffffff',
+                padding: '0.625rem 1rem',
+                borderRadius: '0.75rem',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '500',
+                transition: 'all 0.2s',
+                opacity: 1,
+                visibility: 'visible'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#ea580c';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#f97316';
+              }}
             >
-              <Share2 className="w-4 h-4" />
-              Copiar Link
+              <Share2 style={{ width: '1rem', height: '1rem', opacity: 1 }} />
+              <span style={{ opacity: 1, visibility: 'visible' }}>Copiar Link</span>
             </button>
             
             <button
+              type="button"
               onClick={handleGenerateQR}
               disabled={loading}
-              className="flex items-center justify-center gap-2 bg-gray-500 text-white py-2.5 px-4 rounded-xl hover:bg-gray-600 disabled:bg-gray-300 transition-colors text-sm font-medium"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                backgroundColor: loading ? '#d1d5db' : '#6b7280',
+                color: '#ffffff',
+                padding: '0.625rem 1rem',
+                borderRadius: '0.75rem',
+                border: 'none',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '500',
+                transition: 'all 0.2s',
+                opacity: 1,
+                visibility: 'visible'
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.backgroundColor = '#4b5563';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.backgroundColor = '#6b7280';
+                }
+              }}
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Renovar
+              <RefreshCw style={{ width: '1rem', height: '1rem', opacity: 1 }} className={loading ? 'animate-spin' : ''} />
+              <span style={{ opacity: 1, visibility: 'visible' }}>Renovar</span>
             </button>
           </div>
         </div>

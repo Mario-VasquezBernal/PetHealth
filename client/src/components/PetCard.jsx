@@ -50,14 +50,31 @@ const PetCard = ({ id, name, type, breed, birth_date, photo_url, gender, weight,
             <p className="text-sm text-primary-600">{breed || 'Raza mixta'}</p>
           </div>
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               onDelete(id);
             }}
-            className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+            style={{
+              padding: '0.5rem',
+              color: '#ef4444',
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderRadius: '0.75rem',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              opacity: 1,
+              visibility: 'visible'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#fef2f2';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
             title="Eliminar mascota"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 style={{ width: '1rem', height: '1rem', opacity: 1 }} />
           </button>
         </div>
 
@@ -77,10 +94,33 @@ const PetCard = ({ id, name, type, breed, birth_date, photo_url, gender, weight,
 
         <Link 
           to={`/pets/${id}`}
-          className="flex items-center justify-between w-full bg-primary-50 hover:bg-primary-100 text-primary-700 font-medium py-2 px-4 rounded-xl transition-colors group"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+            backgroundColor: '#F0FDF4',
+            color: '#047857',
+            fontWeight: '500',
+            padding: '0.5rem 1rem',
+            borderRadius: '0.75rem',
+            transition: 'all 0.2s',
+            textDecoration: 'none',
+            opacity: 1,
+            visibility: 'visible'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#DCFCE7';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '#F0FDF4';
+          }}
         >
-          <span className="text-sm">Ver detalles</span>
-          <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          <span style={{ fontSize: '0.875rem', opacity: 1, visibility: 'visible' }}>Ver detalles</span>
+          <ChevronRight 
+            style={{ width: '1rem', height: '1rem', opacity: 1 }} 
+            className="group-hover:translate-x-1 transition-transform" 
+          />
         </Link>
       </div>
     </div>

@@ -2,6 +2,7 @@ const router = require("express").Router();
 const pool = require("../db");
 const authorization = require("../middleware/authorization");
 const crypto = require("crypto");
+const QRCode = require("qrcode"); // ✅ AGREGAR ESTO
 
 // ========================================
 // 1. GENERAR CÓDIGO QR PARA UNA MASCOTA
@@ -23,9 +24,9 @@ router.post("/generate/:petId", authorization, async (req, res) => {
     // Generar token único
     const qrToken = crypto.randomBytes(32).toString("hex");
 
-    // Guardar el token en la base de datos (válido por 365 días)
+    // Guardar el token en la base de datos (válido por 15 minutos)
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 365);
+    expiresAt.setMinutes(expiresAt.getMinutes() + 15); // ✅ 15 minutos
 
     await pool.query(
       `INSERT INTO qr_tokens (pet_id, token, expires_at) 
@@ -36,12 +37,21 @@ router.post("/generate/:petId", authorization, async (req, res) => {
     );
 
     // Generar URL del QR
-    const qrUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/qr/${qrToken}`;
+    const vetAccessUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/qr/${qrToken}`;
+
+    // ✅ GENERAR IMAGEN QR EN BASE64
+    const qrImage = await QRCode.toDataURL(vetAccessUrl, {
+      errorCorrectionLevel: 'H',
+      type: 'image/png',
+      width: 300,
+      margin: 2
+    });
 
     return res.json({
       success: true,
       token: qrToken,
-      qrUrl,
+      qrImage, // ✅ IMAGEN EN BASE64
+      vetAccessUrl,
       expiresAt
     });
 

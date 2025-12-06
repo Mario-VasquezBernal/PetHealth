@@ -78,10 +78,20 @@ export const getPets = async () => {
   return response.json();
 };
 
-export const getPetById = async (id) => {
+// ✅ MODIFICADO: Agregar parámetro skipCache
+export const getPetById = async (id, skipCache = false) => {
   const token = localStorage.getItem('token');
-  const response = await fetch(`${API_URL}/auth/pets/${id}`, {
-    headers: { 'Authorization': `Bearer ${token}` }
+  
+  // ✅ Agregar timestamp para evitar caché del navegador
+  const url = skipCache 
+    ? `${API_URL}/auth/pets/${id}?t=${Date.now()}`
+    : `${API_URL}/auth/pets/${id}`;
+  
+  const response = await fetch(url, {
+    headers: { 
+      'Authorization': `Bearer ${token}`,
+      'Cache-Control': 'no-cache' // ✅ Forzar no usar caché
+    }
   });
   
   if (!response.ok) throw new Error('Error al obtener mascota');
