@@ -3,24 +3,26 @@ require("dotenv").config();
 
 module.exports = async (req, res, next) => {
   try {
-    // 1. Obtener el token del encabezado (header) llamado 'token'
-    const jwtToken = req.header("token");
-    console.log("Token recibido:", jwtToken);
+    // Obtener token del header Authorization
+    const token = req.header("Authorization");
 
-    if (!jwtToken) {
-      return res.status(403).json("No autorizado (Falta token)");
+    if (!token) {
+      return res.status(403).json({ error: "No autorizado - Token no proporcionado" });
     }
 
-    // 2. Verificar si el token es real usando nuestra firma secreta
-    const payload = jwt.verify(jwtToken, process.env.jwtSecret || "mi_secreto_super_seguro");
+    // Remover "Bearer " del token si existe
+    const jwtToken = token.replace("Bearer ", "");
 
-    // 3. Si es válido, guardamos el ID del usuario en la petición
-    // Esto es crucial: req.user ahora tendrá el UUID del usuario real
+    // Verificar token con la clave secreta
+    const payload = jwt.verify(jwtToken, process.env.jwtSecret);
+
+    // Guardar el ID del usuario en la petición
     req.user = payload.user;
     
-    next(); // Dejar pasar a la siguiente ruta
+    next();
+    
   } catch (err) {
-    console.error(err.message);
-    return res.status(403).json("No autorizado (Token inválido)");
+    console.error("Error de autenticación:", err.message);
+    return res.status(403).json({ error: "No autorizado - Token inválido o expirado" });
   }
 };

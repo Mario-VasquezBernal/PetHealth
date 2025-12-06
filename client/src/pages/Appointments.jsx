@@ -2,7 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { 
-    getPets, getVets, getAppointments, createAppointment, deleteAppointment, 
+    getPets, 
+    getVeterinarians,  // ✅ CORREGIDO
+    getAppointments, 
+    createAppointment, 
+    deleteAppointment, 
     getClinics
 } from '../dataManager';
 import ClinicManagement from '../components/ClinicManagement'; 
@@ -38,7 +42,12 @@ const Appointments = () => {
   
   const loadData = useCallback(async () => {
       try {
-          const [p, v, c, a] = await Promise.all([getPets(), getVets(), getClinics(), getAppointments()]);
+          const [p, v, c, a] = await Promise.all([
+              getPets(), 
+              getVeterinarians(),  // ✅ CORREGIDO
+              getClinics(), 
+              getAppointments()
+          ]);
           
           setPets(ArrayOf(p));
           setVets(ArrayOf(v));
@@ -116,7 +125,7 @@ const Appointments = () => {
         {/* Header */}
         <div className="mb-8">
           <Link 
-            to="/" 
+            to="/home"  // ✅ CORREGIDO: Cambiado de "/" a "/home"
             className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 font-medium mb-4 transition-colors group"
           >
             <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
@@ -154,7 +163,7 @@ const Appointments = () => {
                   disabled={pets.length === 0}
                 >
                   <option value="">{pets.length === 0 ? 'Crea una mascota primero' : 'Selecciona una mascota'}</option>
-                  {pets.map(p => <option key={p.id} value={p.id}>{p.name} ({p.type})</option>)}
+                  {pets.map(p => <option key={p.id} value={p.id}>{p.name} ({p.type || p.species})</option>)}
                 </select>
               </div>
 

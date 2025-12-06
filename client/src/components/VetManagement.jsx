@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { getVets, createVet, deleteVet, getClinics } from '../dataManager';
+import { 
+    getVeterinarians, 
+    createVeterinarian, 
+    deleteVeterinarian, 
+    getClinics 
+} from '../dataManager';
 import { X, Stethoscope, Building2, Trash2, Plus, UserPlus } from 'lucide-react';
 
 const VetManagement = ({ onClose }) => {
@@ -9,13 +14,14 @@ const VetManagement = ({ onClose }) => {
     const [form, setForm] = useState({ name: '', specialty: '', clinic_id: '' });
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        loadData();
-    }, []);
+   useEffect(() => {
+    loadData();
+}, []); // Solo se ejecuta una vez al montar
+
 
     const loadData = async () => {
         try {
-            const [v, c] = await Promise.all([getVets(), getClinics()]);
+            const [v, c] = await Promise.all([getVeterinarians(), getClinics()]);
             setVets(Array.isArray(v) ? v : []);
             setClinics(Array.isArray(c) ? c : []);
         } catch (error) {
@@ -39,11 +45,11 @@ const VetManagement = ({ onClose }) => {
                 clinic_id: form.clinic_id
             };
 
-            await createVet(vetData);
+            await createVeterinarian(vetData);
             toast.success("Doctor registrado ✅");
             setForm({ name: '', specialty: '', clinic_id: '' });
             
-            const updatedVets = await getVets(); 
+            const updatedVets = await getVeterinarians(); 
             setVets(Array.isArray(updatedVets) ? updatedVets : []);
         } catch (error) {
             console.error(error);
@@ -54,10 +60,10 @@ const VetManagement = ({ onClose }) => {
     const handleDelete = async (id) => {
         if (window.confirm("¿Eliminar a este doctor?")) {
             try {
-                await deleteVet(id);
+                await deleteVeterinarian(id);
                 toast.info("Doctor eliminado 🗑️");
                 
-                const updatedVets = await getVets();
+                const updatedVets = await getVeterinarians();
                 setVets(Array.isArray(updatedVets) ? updatedVets : []);
             } catch (error) {
                 console.error(error);

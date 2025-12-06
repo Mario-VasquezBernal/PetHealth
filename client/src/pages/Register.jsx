@@ -1,119 +1,266 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { registerUser } from '../dataManager';
 import { toast } from 'react-toastify';
+import { registerUser } from '../dataManager';
+import { User, Mail, Lock, Phone, MapPin, Globe } from 'lucide-react';
 
 const Register = () => {
   const navigate = useNavigate();
-  
-  // 1. Estado inicial con TODOS los campos
-  const [formData, setFormData] = useState({ 
-    name: '', 
-    email: '', 
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
     password: '',
+    confirmPassword: '',
     phone: '',
     address: '',
     city: '',
     country: ''
   });
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
   };
 
-  // ⚠️ FUNCIÓN handleSubmit DENTRO DEL COMPONENTE Y CON LÓGICA DE LIMPIEZA
-  const handleSubmit = async (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
-    setError(''); // Limpiar error visual
     
-    // 2. LIMPIEZA DE DATOS CRUCIAL
-    const cleanData = {
-        ...formData,
-        email: formData.email.trim(), // Elimina espacios en blanco
-    };
+    if (formData.password !== formData.confirmPassword) {
+      return toast.error('Las contraseñas no coinciden');
+    }
+
+    if (formData.password.length < 6) {
+      return toast.warning('La contraseña debe tener al menos 6 caracteres');
+    }
 
     try {
-      // 3. Envío al backend
-      const data = await registerUser(cleanData); 
+      setLoading(true);
+      
+      const data = await registerUser({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+        country: formData.country
+      });
       
       localStorage.setItem('token', data.token);
-      toast.success("¡Registro exitoso! Bienvenido 🥳", { autoClose: 5000 });
-      navigate('/');
-    } catch (err) {
-      console.error(err);
-      // Muestra el error específico del servidor (ej: "El usuario ya existe")
-      // Si el servidor devolvió un objeto de error, intentamos leer su mensaje.
-      setError(err.message || 'Error al registrar. El correo podría ya estar en uso.');
+      toast.success('¡Cuenta creada exitosamente!');
+      navigate('/home');
+      
+    } catch (error) {
+      console.error(error);
+      toast.error(error.message || 'Error al registrar usuario');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 py-10">
-      <div className="w-full max-w-lg bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">Crear Cuenta 🚀</h1>
-          <p className="text-gray-500 mt-2">Completa tu perfil para empezar.</p>
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-100 py-8 px-4">
+      <div className="bg-white rounded-card shadow-2xl p-8 w-full max-w-2xl mx-auto border border-primary-100">
+        
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <span className="text-3xl">🐾</span>
+          </div>
+          <h1 className="text-3xl font-bold text-primary-900 mb-2">Crear Cuenta 🚀</h1>
+          <p className="text-primary-600">Completa tu perfil para empezar.</p>
         </div>
 
-        {error && <div className="bg-red-100 text-red-700 p-3 mb-4 rounded text-center text-sm">{error}</div>}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Formulario */}
+        <form onSubmit={handleRegister} className="space-y-5">
           
-          {/* --- SECCIÓN 1: DATOS DE LA CUENTA --- */}
-          <div className="border-b pb-4 mb-4">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Datos de Acceso</h3>
+          {/* Datos de Acceso */}
+          <div className="bg-primary-50 p-5 rounded-xl border border-primary-100">
+            <h3 className="font-bold text-primary-900 mb-4">DATOS DE ACCESO</h3>
+            
             <div className="space-y-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Nombre Completo</label>
-                    <input name="name" type="text" required onChange={handleChange} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Juan Pérez" />
+              {/* Nombre */}
+              <div>
+                <label className="block text-sm font-medium text-primary-700 mb-2">
+                  Nombre Completo
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary-400" />
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-3 border border-primary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white"
+                    placeholder="Juan Pérez"
+                    required
+                  />
                 </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Correo Electrónico</label>
-                    <input name="email" type="email" required onChange={handleChange} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="juan@ejemplo.com" />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-medium text-primary-700 mb-2">
+                  Correo Electrónico
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary-400" />
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-3 border border-primary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white"
+                    placeholder="tu@email.com"
+                    required
+                  />
                 </div>
+              </div>
+
+              {/* Contraseñas */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Contraseña</label>
-                    <input name="password" type="password" required onChange={handleChange} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="********" />
+                  <label className="block text-sm font-medium text-primary-700 mb-2">
+                    Contraseña
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary-400" />
+                    <input
+                      type="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      className="w-full pl-10 pr-4 py-3 border border-primary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white"
+                      placeholder="••••••••"
+                      required
+                    />
+                  </div>
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-primary-700 mb-2">
+                    Confirmar Contraseña
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary-400" />
+                    <input
+                      type="password"
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      className="w-full pl-10 pr-4 py-3 border border-primary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white"
+                      placeholder="••••••••"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* --- SECCIÓN 2: DATOS DE CONTACTO --- */}
-          <div>
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Información de Contacto</h3>
+          {/* Información de Contacto */}
+          <div className="bg-primary-50 p-5 rounded-xl border border-primary-100">
+            <h3 className="font-bold text-primary-900 mb-4">INFORMACIÓN DE CONTACTO</h3>
+            
             <div className="space-y-4">
+              {/* Teléfono */}
+              <div>
+                <label className="block text-sm font-medium text-primary-700 mb-2">
+                  Teléfono
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary-400" />
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-3 border border-primary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white"
+                    placeholder="0999999999"
+                  />
+                </div>
+              </div>
+
+              {/* Dirección */}
+              <div>
+                <label className="block text-sm font-medium text-primary-700 mb-2">
+                  Dirección
+                </label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary-400" />
+                  <input
+                    type="text"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-3 border border-primary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white"
+                    placeholder="Av. Principal 123"
+                  />
+                </div>
+              </div>
+
+              {/* Ciudad y País */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Teléfono</label>
-                    <input name="phone" type="tel" required onChange={handleChange} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="099 123 4567" />
+                  <label className="block text-sm font-medium text-primary-700 mb-2">
+                    Ciudad
+                  </label>
+                  <input
+                    type="text"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-primary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white"
+                    placeholder="Quito"
+                  />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Dirección</label>
-                    <input name="address" type="text" required onChange={handleChange} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Av. Principal 123" />
+                  <label className="block text-sm font-medium text-primary-700 mb-2">
+                    País
+                  </label>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary-400" />
+                    <input
+                      type="text"
+                      name="country"
+                      value={formData.country}
+                      onChange={handleChange}
+                      className="w-full pl-10 pr-4 py-3 border border-primary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white"
+                      placeholder="Ecuador"
+                    />
+                  </div>
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Ciudad</label>
-                        <input name="city" type="text" required onChange={handleChange} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Cuenca" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">País</label>
-                        <input name="country" type="text" required onChange={handleChange} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ecuador" />
-                    </div>
-                </div>
+              </div>
             </div>
           </div>
 
-          <button className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors shadow-lg mt-6">
-            Registrarse
+          {/* Botón */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-primary-500 to-primary-600 text-white font-bold py-3 rounded-xl hover:from-primary-600 hover:to-primary-700 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              'Registrarse'
+            )}
           </button>
         </form>
 
-        <p className="text-center text-gray-500 mt-6 text-sm">
-          ¿Ya tienes cuenta? <Link to="/login" className="text-blue-600 font-semibold hover:underline">Inicia Sesión</Link>
-        </p>
+        {/* Login */}
+        <div className="mt-6 text-center">
+          <p className="text-primary-600">
+            ¿Ya tienes cuenta?{' '}
+            <Link to="/login" className="text-primary-600 font-bold hover:text-primary-700 hover:underline transition-colors">
+              Inicia sesión
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
