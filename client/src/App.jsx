@@ -10,32 +10,29 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import PetDetails from './pages/PetDetails'; // <--- Importamos la nueva página
+import PetDetails from './pages/PetDetails';
 import Profile from './pages/Profile';
 import Appointments from './pages/Appointments';
 
 function App() {
   return (
     <BrowserRouter>
-      {/* Contenedor de Alertas */}
       <ToastContainer position="top-right" autoClose={3000} theme="colored" />
       
       <Routes>
-        {/* Layout Principal que envuelve todo */}
         <Route element={<MainLayout />}>
           
           {/* Rutas Públicas */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Rutas Protegidas (Solo usuarios logueados) */}
+          {/* Rutas Protegidas */}
           <Route element={<ProtectedRoute />}>
              <Route path="/" element={<Home />} />
              
-             {/* --- RUTA DE DETALLE DE MASCOTA --- */}
-             <Route path="/pet/:id" element={<PetDetails />} />
-             {/* ---------------------------------- */}
-
+             {/* ✅ CORRECCIÓN: /pets/:id (plural) */}
+             <Route path="/pets/:id" element={<PetDetails />} />
+             
              <Route path="/profile" element={<Profile />} />
              <Route path="/appointments" element={<Appointments />} />
           </Route>

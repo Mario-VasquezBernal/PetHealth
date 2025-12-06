@@ -1,50 +1,112 @@
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { Heart, Calendar, User, LogOut, Menu, X } from 'lucide-react';
+import { useState } from 'react';
 
 const Navbar = () => {
-  const navigate = useNavigate();
   const location = useLocation();
-  const isLoggedIn = !!localStorage.getItem('token');
+  const navigate = useNavigate();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    toast.info('Sesión cerrada');
     navigate('/login');
   };
 
-  if (location.pathname === '/login' || location.pathname === '/register') {
-    return null;
-  }
+  const isActive = (path) => location.pathname === path;
+
+  const navLinks = [
+    { path: '/', label: 'Inicio', icon: Heart },
+    { path: '/appointments', label: 'Citas', icon: Calendar },
+    { path: '/profile', label: 'Perfil', icon: User },
+  ];
 
   return (
-    <nav className="bg-white shadow-md p-4 sticky top-0 z-50">
-      <div className="container mx-auto flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold text-blue-600 flex items-center gap-2">
-          🐾 PetHealth
-        </Link>
+    <nav className="bg-white border-b border-primary-100 sticky top-0 z-50 shadow-sm">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
+          
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-2 group">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+              <Heart className="w-5 h-5 text-white" fill="white" />
+            </div>
+            <span className="text-xl font-bold text-primary-900">PetHealth</span>
+          </Link>
 
-        <div className="flex items-center gap-4">
-          {isLoggedIn ? (
-            <>
-              <Link to="/appointments" className="text-gray-600 hover:text-blue-600 font-medium">
-                📅 Citas
-              </Link>
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-1">
+            {navLinks.map((link) => {
+              const IconComponent = link.icon;
+              return (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${
+                    isActive(link.path)
+                      ? 'bg-primary-100 text-primary-700'
+                      : 'text-primary-600 hover:bg-primary-50 hover:text-primary-700'
+                  }`}
+                >
+                  <IconComponent className="w-5 h-5" />
+                  {link.label}
+                </Link>
+              );
+            })}
+            
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-red-600 hover:bg-red-50 transition-all ml-2"
+            >
+              <LogOut className="w-5 h-5" />
+              Salir
+            </button>
+          </div>
 
-              <Link to="/profile" className="text-gray-600 hover:text-blue-600 font-medium">
-                👤 Perfil
-              </Link>
-              
-              <button 
-                onClick={handleLogout}
-                className="bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors font-medium border border-red-100"
-              >
-                Salir
-              </button>
-            </>
-          ) : (
-            <Link to="/login" className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-medium shadow-md shadow-blue-500/30">
-              Iniciar Sesión
-            </Link>
-          )}
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="md:hidden p-2 rounded-xl hover:bg-primary-50 text-primary-700"
+          >
+            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
+
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden py-4 space-y-2 border-t border-primary-100">
+            {navLinks.map((link) => {
+              const IconComponent = link.icon;
+              return (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
+                    isActive(link.path)
+                      ? 'bg-primary-100 text-primary-700'
+                      : 'text-primary-600 hover:bg-primary-50'
+                  }`}
+                >
+                  <IconComponent className="w-5 h-5" />
+                  {link.label}
+                </Link>
+              );
+            })}
+            
+            <button
+              onClick={() => {
+                handleLogout();
+                setIsMobileMenuOpen(false);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-red-600 hover:bg-red-50 transition-all"
+            >
+              <LogOut className="w-5 h-5" />
+              Salir
+            </button>
+          </div>
+        )}
       </div>
     </nav>
   );

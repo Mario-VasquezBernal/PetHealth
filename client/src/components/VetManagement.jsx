@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { getVets, createVet, deleteVet, getClinics } from '../dataManager';
+import { X, Stethoscope, Building2, Trash2, Plus, UserPlus } from 'lucide-react';
 
 const VetManagement = ({ onClose }) => {
     const [vets, setVets] = useState([]);
@@ -15,10 +16,10 @@ const VetManagement = ({ onClose }) => {
     const loadData = async () => {
         try {
             const [v, c] = await Promise.all([getVets(), getClinics()]);
-            setVets(v);
-            setClinics(c);
+            setVets(Array.isArray(v) ? v : []);
+            setClinics(Array.isArray(c) ? c : []);
         } catch (error) {
-            console.error(error); // <--- CORRECCIÓN 1
+            console.error(error);
             toast.error("Error cargando datos");
         } finally {
             setLoading(false);
@@ -27,16 +28,25 @@ const VetManagement = ({ onClose }) => {
 
     const handleCreate = async (e) => {
         e.preventDefault();
-        if (!form.clinic_id) return toast.warning("Selecciona una clínica");
+        if (!form.name || !form.specialty || !form.clinic_id) {
+            return toast.warning("Completa todos los campos");
+        }
 
         try {
-            await createVet(form);
+            const vetData = {
+                name: form.name.trim(),
+                specialty: form.specialty.trim(),
+                clinic_id: form.clinic_id
+            };
+
+            await createVet(vetData);
             toast.success("Doctor registrado ✅");
             setForm({ name: '', specialty: '', clinic_id: '' });
+            
             const updatedVets = await getVets(); 
-            setVets(updatedVets);
+            setVets(Array.isArray(updatedVets) ? updatedVets : []);
         } catch (error) {
-            console.error(error); // <--- CORRECCIÓN 2
+            console.error(error);
             toast.error("Error al crear doctor");
         }
     };
@@ -46,10 +56,11 @@ const VetManagement = ({ onClose }) => {
             try {
                 await deleteVet(id);
                 toast.info("Doctor eliminado 🗑️");
+                
                 const updatedVets = await getVets();
-                setVets(updatedVets);
+                setVets(Array.isArray(updatedVets) ? updatedVets : []);
             } catch (error) {
-                console.error(error); // <--- CORRECCIÓN 3
+                console.error(error);
                 toast.error("Error al eliminar");
             }
         }
@@ -57,64 +68,151 @@ const VetManagement = ({ onClose }) => {
 
     return (
         <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 backdrop-blur-sm p-4">
-            <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="bg-white p-6 rounded-card shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                
+                {/* Header */}
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800">Gestionar Veterinarios</h2>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-xl font-bold">✕</button>
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center">
+                            <Stethoscope className="w-6 h-6 text-primary-600" />
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-bold text-primary-900">Gestionar Veterinarios</h2>
+                            <p className="text-sm text-primary-600">Directorio médico de la clínica</p>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={onClose} 
+                        className="p-2 hover:bg-primary-50 rounded-xl transition-colors text-primary-700"
+                    >
+                        <X className="w-6 h-6" />
+                    </button>
                 </div>
 
-                {/* FORMULARIO DE CREACIÓN */}
-                <div className="bg-green-50 p-4 rounded-lg mb-6 border border-green-100">
-                    <h3 className="font-bold text-green-800 mb-3">Nuevo Doctor</h3>
-                    <form onSubmit={handleCreate} className="space-y-3">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <input 
-                                required placeholder="Nombre (Dr. Ejemplo)" 
-                                className="border p-2 rounded bg-white w-full"
-                                value={form.name} onChange={e => setForm({...form, name: e.target.value})}
-                            />
-                            <input 
-                                required placeholder="Especialidad" 
-                                className="border p-2 rounded bg-white w-full"
-                                value={form.specialty} onChange={e => setForm({...form, specialty: e.target.value})}
-                            />
+                {/* Formulario */}
+                <div className="bg-gradient-to-br from-primary-50 to-white p-5 rounded-xl mb-6 border border-primary-200">
+                    <div className="flex items-center gap-2 mb-4">
+                        <UserPlus className="w-5 h-5 text-primary-600" />
+                        <h3 className="font-bold text-primary-900">Nuevo Doctor</h3>
+                    </div>
+                    
+                    <form onSubmit={handleCreate} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-primary-700 mb-1">Nombre completo *</label>
+                                <input 
+                                    required 
+                                    placeholder="Dr. Juan Pérez" 
+                                    className="w-full border border-primary-200 p-2.5 rounded-xl bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                                    value={form.name} 
+                                    onChange={e => setForm({...form, name: e.target.value})}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-primary-700 mb-1">Especialidad *</label>
+                                <input 
+                                    required 
+                                    placeholder="Medicina General" 
+                                    className="w-full border border-primary-200 p-2.5 rounded-xl bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                                    value={form.specialty} 
+                                    onChange={e => setForm({...form, specialty: e.target.value})}
+                                />
+                            </div>
                         </div>
-                        <select 
-                            required 
-                            className="border p-2 rounded bg-white w-full"
-                            value={form.clinic_id} onChange={e => setForm({...form, clinic_id: e.target.value})}
+                        
+                        <div>
+                            <label className="block text-sm font-medium text-primary-700 mb-1 flex items-center gap-1">
+                                <Building2 className="w-4 h-4" />
+                                Clínica *
+                            </label>
+                            <select 
+                                required 
+                                className="w-full border border-primary-200 p-2.5 rounded-xl bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                                value={form.clinic_id} 
+                                onChange={e => setForm({...form, clinic_id: e.target.value})}
+                            >
+                                <option value="">Selecciona la clínica</option>
+                                {clinics.map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        
+                        <button 
+                            type="submit" 
+                            className="w-full bg-gradient-to-r from-primary-500 to-primary-600 text-white font-bold p-3 rounded-xl hover:from-primary-600 hover:to-primary-700 transition-all shadow-md flex items-center justify-center gap-2"
+                            disabled={clinics.length === 0}
                         >
-                            <option value="">Selecciona la Clínica</option>
-                            {clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
-                        <button type="submit" className="w-full bg-green-600 text-white font-bold p-2 rounded hover:bg-green-700">
+                            <Plus className="w-5 h-5" />
                             Guardar Doctor
                         </button>
+                        
+                        {clinics.length === 0 && (
+                            <p className="text-red-600 text-sm text-center">⚠️ Crea una clínica primero</p>
+                        )}
                     </form>
                 </div>
 
-                {/* LISTA DE VETERINARIOS CON BOTÓN BORRAR */}
-                <h3 className="font-bold text-gray-700 mb-3">Directorio Médico ({vets.length})</h3>
-                <div className="space-y-2">
-                    {loading ? <p>Cargando...</p> : vets.map(vet => (
-                        <div key={vet.id} className="border p-3 rounded-lg flex justify-between items-center hover:bg-gray-50">
-                            <div>
-                                <p className="font-bold text-gray-800">{vet.name}</p>
-                                <p className="text-xs text-gray-500">{vet.specialty}</p>
+                {/* Lista de Veterinarios */}
+                <div>
+                    <h3 className="font-bold text-primary-900 mb-4 flex items-center justify-between">
+                        <span>Directorio Médico</span>
+                        <span className="bg-primary-100 text-primary-700 px-3 py-1 rounded-full text-sm font-semibold">
+                            {vets.length} doctores
+                        </span>
+                    </h3>
+                    
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                        {loading ? (
+                            <p className="text-primary-500 text-center py-8">Cargando...</p>
+                        ) : vets.length === 0 ? (
+                            <div className="text-center py-8 bg-primary-50 rounded-xl border border-dashed border-primary-300">
+                                <Stethoscope className="w-12 h-12 text-primary-400 mx-auto mb-2" />
+                                <p className="text-primary-600">No hay doctores registrados</p>
                             </div>
-                            <button 
-                                onClick={() => handleDelete(vet.id)}
-                                className="bg-red-50 text-red-500 hover:bg-red-100 p-2 rounded transition-colors"
-                                title="Eliminar doctor"
-                            >
-                                🗑️
-                            </button>
-                        </div>
-                    ))}
+                        ) : (
+                            vets.map(vet => {
+                                const clinic = clinics.find(c => c.id === vet.clinic_id);
+                                return (
+                                    <div 
+                                        key={vet.id} 
+                                        className="border border-primary-100 p-4 rounded-xl flex justify-between items-center hover:bg-primary-50 transition-colors group"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center group-hover:bg-primary-200 transition-colors">
+                                                <Stethoscope className="w-5 h-5 text-primary-600" />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-primary-900">{vet.name}</p>
+                                                <p className="text-sm text-primary-600">{vet.specialty}</p>
+                                                <p className="text-xs text-primary-500 flex items-center gap-1 mt-1">
+                                                    <Building2 className="w-3 h-3" />
+                                                    {clinic ? clinic.name : 'Consultorio Privado'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => handleDelete(vet.id)}
+                                            className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                                            title="Eliminar doctor"
+                                        >
+                                            <Trash2 className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
                 </div>
 
-                <div className="mt-6 text-right">
-                    <button onClick={onClose} className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 font-medium">Cerrar</button>
+                {/* Footer */}
+                <div className="mt-6 text-right border-t border-primary-100 pt-4">
+                    <button 
+                        onClick={onClose} 
+                        className="bg-primary-100 text-primary-700 px-6 py-2.5 rounded-xl hover:bg-primary-200 font-medium transition-colors"
+                    >
+                        Cerrar
+                    </button>
                 </div>
             </div>
         </div>

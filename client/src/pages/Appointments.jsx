@@ -6,7 +6,19 @@ import {
     getClinics
 } from '../dataManager';
 import ClinicManagement from '../components/ClinicManagement'; 
-import VetManagement from '../components/VetManagement'; 
+import VetManagement from '../components/VetManagement';
+import { 
+  ArrowLeft, 
+  Calendar, 
+  MapPin, 
+  Stethoscope, 
+  Building2, 
+  X,
+  Clock,
+  FileText,
+  PlusCircle,
+  AlertCircle
+} from 'lucide-react';
 
 const ArrayOf = (data) => Array.isArray(data) ? data : [];
 
@@ -58,9 +70,9 @@ const Appointments = () => {
     runLoader();
   }, [loadData]); 
 
-  // Filtrar doctores: Si hay clínica seleccionada, muestra solo sus doctores. Si no, muestra todos.
+  // ✅ CORRECCIÓN: Sin parseInt() - comparar UUIDs directamente
   const filteredVets = selectedClinicId 
-    ? vets.filter(v => v.clinic_id === parseInt(selectedClinicId))
+    ? vets.filter(v => v.clinic_id === selectedClinicId)
     : vets;
 
   const handleSubmit = async (e) => {
@@ -97,153 +109,254 @@ const Appointments = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 pb-8">
       
-      <Link to="/" className="text-blue-600 hover:underline mb-6 inline-flex items-center gap-2 font-medium transition-colors hover:text-blue-800">
-        &larr; Volver al Dashboard
-      </Link>
-
-      <h1 className="text-3xl font-bold text-gray-800 mb-8">📅 Agenda Veterinaria</h1>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* COLUMNA 1: FORMULARIO */}
-        <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100 h-fit">
-            <h2 className="text-xl font-bold mb-4 text-blue-600">Nueva Cita</h2>
+        {/* Header */}
+        <div className="mb-8">
+          <Link 
+            to="/" 
+            className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 font-medium mb-4 transition-colors group"
+          >
+            <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+            Volver al Dashboard
+          </Link>
+          
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <Calendar className="w-6 h-6 text-white" />
+            </div>
+            <h1 className="text-3xl font-bold text-primary-900">Agenda Veterinaria</h1>
+          </div>
+          <p className="text-primary-600">Gestiona las citas de tus mascotas</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* COLUMNA 1: FORMULARIO */}
+          <div className="bg-white p-6 rounded-card shadow-card border border-primary-100 h-fit">
+            <div className="flex items-center gap-2 mb-6">
+              <PlusCircle className="w-6 h-6 text-primary-600" />
+              <h2 className="text-xl font-bold text-primary-900">Nueva Cita</h2>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-4">
-                
-                {/* 1. SELECCIÓN DE MASCOTA */}
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Mascota</label>
-                    <select className="w-full border p-2 rounded mt-1 bg-white" value={form.pet_id} onChange={e => setForm({...form, pet_id: e.target.value})} required disabled={pets.length === 0}>
-                        <option value="">{pets.length === 0 ? 'Crea una mascota primero' : 'Selecciona una mascota'}</option>
-                        {pets.map(p => <option key={p.id} value={p.id}>{p.name} ({p.type})</option>)}
-                    </select>
+              
+              {/* 1. SELECCIÓN DE MASCOTA */}
+              <div>
+                <label className="block text-sm font-medium text-primary-700 mb-2">Mascota *</label>
+                <select 
+                  className="w-full border border-primary-200 p-2.5 rounded-xl bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all" 
+                  value={form.pet_id} 
+                  onChange={e => setForm({...form, pet_id: e.target.value})} 
+                  required 
+                  disabled={pets.length === 0}
+                >
+                  <option value="">{pets.length === 0 ? 'Crea una mascota primero' : 'Selecciona una mascota'}</option>
+                  {pets.map(p => <option key={p.id} value={p.id}>{p.name} ({p.type})</option>)}
+                </select>
+              </div>
+
+              <hr className="border-primary-100 my-4" />
+
+              {/* 2. CAJÓN DE CLÍNICA */}
+              <div>
+                <label className="block text-sm font-medium text-primary-700 mb-2 flex items-center gap-1">
+                  <Building2 className="w-4 h-4" />
+                  1. Clínica
+                </label>
+                <div className="flex gap-2">
+                  <select 
+                    className="flex-1 border border-primary-200 p-2.5 rounded-xl bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all" 
+                    value={selectedClinicId} 
+                    onChange={e => {
+                      setSelectedClinicId(e.target.value);
+                      setForm({...form, vet_id: ''});
+                    }}
+                  >
+                    <option value="">-- Todas las Clínicas --</option>
+                    {clinics.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  
+                  <button 
+                    type='button' 
+                    onClick={() => setIsClinicModalOpen(true)}
+                    className='bg-primary-100 text-primary-700 px-3.5 rounded-xl hover:bg-primary-200 border border-primary-200 font-bold transition-colors'
+                    title="Gestionar Clínicas"
+                  >
+                    +
+                  </button>
                 </div>
+              </div>
 
-                <hr className="border-gray-100 my-2" />
-
-                {/* 2. CAJÓN DE CLÍNICA (PRIMERO) */}
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">1. Clínica</label>
-                    <div className="flex gap-2">
-                        <select 
-                            className="w-full border p-2 rounded bg-white outline-none focus:ring-2 focus:ring-blue-500" 
-                            value={selectedClinicId} 
-                            onChange={e => {
-                                setSelectedClinicId(e.target.value);
-                                setForm({...form, vet_id: ''}); // Reseteamos el doctor al cambiar clínica
-                            }}
-                        >
-                            <option value="">-- Todas las Clínicas --</option>
-                            {clinics.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                        </select>
-                        
-                        {/* Botón Gestionar Clínicas (Azul) */}
-                        <button 
-                            type='button' 
-                            onClick={() => setIsClinicModalOpen(true)}
-                            className='bg-blue-100 text-blue-700 px-3 rounded hover:bg-blue-200 border border-blue-200 text-lg font-bold transition-colors min-w-[45px]'
-                            title="Gestionar Clínicas"
-                        >
-                            +
-                        </button>
-                    </div>
+              {/* 3. CAJÓN DE VETERINARIO */}
+              <div>
+                <label className="block text-sm font-medium text-primary-700 mb-2 flex items-center gap-1">
+                  <Stethoscope className="w-4 h-4" />
+                  2. Veterinario *
+                </label>
+                <div className="flex gap-2">
+                  <select 
+                    className="flex-1 border border-primary-200 p-2.5 rounded-xl bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all" 
+                    value={form.vet_id} 
+                    onChange={e => setForm({...form, vet_id: e.target.value})} 
+                    required 
+                    disabled={vets.length === 0}
+                  >
+                    <option value="">
+                      {selectedClinicId 
+                        ? (filteredVets.length === 0 ? 'No hay doctores aquí' : 'Selecciona doctor de esta clínica')
+                        : 'Selecciona un doctor'
+                      }
+                    </option>
+                    
+                    {filteredVets.map(v => {
+                      const clinic = clinics.find(c => c.id === v.clinic_id);
+                      const clinicName = clinic ? clinic.name : "Consultorio Privado";
+                      const label = selectedClinicId ? v.name : `${v.name} (${clinicName})`;
+                      
+                      return (
+                        <option key={v.id} value={v.id}>
+                          {label} - {v.specialty}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  
+                  <button 
+                    type="button"
+                    onClick={() => setIsVetModalOpen(true)}
+                    className="bg-primary-500 text-white px-3.5 rounded-xl hover:bg-primary-600 border border-primary-500 font-bold transition-colors"
+                    title="Agregar Nuevo Doctor"
+                  >
+                    +
+                  </button>
                 </div>
+                {clinics.length === 0 && (
+                  <p className='text-red-600 text-xs mt-2 flex items-center gap-1'>
+                    <AlertCircle className="w-3 h-3" />
+                    Registra una clínica primero
+                  </p>
+                )}
+              </div>
 
-                {/* 3. CAJÓN DE VETERINARIO (SEGUNDO) */}
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">2. Veterinario</label>
-                    <div className="flex gap-2">
-                        <select 
-                            className="w-full border p-2 rounded bg-white outline-none focus:ring-2 focus:ring-green-500" 
-                            value={form.vet_id} 
-                            onChange={e => setForm({...form, vet_id: e.target.value})} 
-                            required 
-                            disabled={vets.length === 0}
-                        >
-                            <option value="">
-                                {selectedClinicId 
-                                    ? (filteredVets.length === 0 ? 'No hay doctores aquí' : 'Selecciona doctor de esta clínica')
-                                    : 'Selecciona un doctor'
-                                }
-                            </option>
-                            
-                            {filteredVets.map(v => {
-                                const clinic = clinics.find(c => c.id === v.clinic_id);
-                                const clinicName = clinic ? clinic.name : "Consultorio Privado";
-                                // Si ya seleccioné clínica arriba, no repito el nombre en el option para que se vea limpio
-                                const label = selectedClinicId ? v.name : `${v.name} (${clinicName})`;
-                                
-                                return (
-                                    <option key={v.id} value={v.id}>
-                                        {label} ({v.specialty})
-                                    </option>
-                                );
-                            })}
-                        </select>
-                        
-                        {/* Botón Gestionar Doctores (Verde) */}
-                        <button 
-                            type="button"
-                            onClick={() => setIsVetModalOpen(true)}
-                            className="bg-green-100 text-green-700 px-3 rounded hover:bg-green-200 border border-green-200 text-xl font-bold transition-colors min-w-[45px]"
-                            title="Agregar Nuevo Doctor"
-                        >
-                            +
-                        </button>
-                    </div>
-                    {clinics.length === 0 && <p className='text-red-500 text-xs mt-1'>⚠️ Registra una clínica primero.</p>}
-                </div>
+              <hr className="border-primary-100 my-4" />
 
-                <hr className="border-gray-100 my-2" />
+              {/* Fecha y Hora */}
+              <div>
+                <label className="block text-sm font-medium text-primary-700 mb-2 flex items-center gap-1">
+                  <Clock className="w-4 h-4" />
+                  Fecha y Hora *
+                </label>
+                <input 
+                  type="datetime-local" 
+                  className="w-full border border-primary-200 p-2.5 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all" 
+                  value={form.date} 
+                  onChange={e => setForm({...form, date: e.target.value})} 
+                  required
+                />
+              </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Fecha y Hora</label>
-                    <input type="datetime-local" className="w-full border p-2 rounded mt-1" value={form.date} onChange={e => setForm({...form, date: e.target.value})} required/>
-                </div>
+              {/* Motivo */}
+              <div>
+                <label className="block text-sm font-medium text-primary-700 mb-2 flex items-center gap-1">
+                  <FileText className="w-4 h-4" />
+                  Motivo
+                </label>
+                <textarea 
+                  className="w-full border border-primary-200 p-2.5 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all" 
+                  rows="3" 
+                  value={form.reason} 
+                  onChange={e => setForm({...form, reason: e.target.value})} 
+                  placeholder="Ej: Vacuna anual, consulta general..."
+                ></textarea>
+              </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Motivo</label>
-                    <textarea className="w-full border p-2 rounded mt-1" rows="2" value={form.reason} onChange={e => setForm({...form, reason: e.target.value})} placeholder="Ej: Vacuna anual..."></textarea>
-                </div>
-
-                <button className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 shadow-md" disabled={pets.length === 0 || vets.length === 0}>
-                    Agendar Cita
-                </button>
+              <button 
+                className="w-full bg-gradient-to-r from-primary-500 to-primary-600 text-white font-bold py-3 rounded-xl hover:from-primary-600 hover:to-primary-700 shadow-lg disabled:from-gray-300 disabled:to-gray-400 transition-all" 
+                disabled={pets.length === 0 || vets.length === 0}
+              >
+                <Calendar className="w-5 h-5 inline mr-2" />
+                Agendar Cita
+              </button>
             </form>
-        </div>
+          </div>
 
-        {/* COLUMNA 2: LISTA DE CITAS */}
-        <div className="lg:col-span-2 space-y-4">
-            <h2 className="text-xl font-bold text-gray-800">Próximas Citas</h2>
+          {/* COLUMNA 2: LISTA DE CITAS */}
+          <div className="lg:col-span-2 space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-primary-900 flex items-center gap-2">
+                <Calendar className="w-7 h-7 text-primary-600" />
+                Próximas Citas
+              </h2>
+              <span className="bg-primary-100 text-primary-700 px-3 py-1 rounded-full text-sm font-semibold">
+                {appointments.length} citas
+              </span>
+            </div>
+
             {appointments.length === 0 ? (
-                <div className="bg-gray-50 p-10 rounded-xl text-center text-gray-400 border border-dashed border-gray-300">
-                    No tienes citas programadas.
+              <div className="bg-white rounded-card shadow-card p-12 text-center border border-dashed border-primary-300">
+                <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Calendar className="w-10 h-10 text-primary-600" />
                 </div>
+                <h3 className="text-xl font-bold text-primary-900 mb-2">No tienes citas programadas</h3>
+                <p className="text-primary-600">Agenda una cita usando el formulario de la izquierda</p>
+              </div>
             ) : (
-                appointments.map(appt => (
-                    <div key={appt.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row items-center gap-4 hover:shadow-md transition-shadow">
-                        <div className="bg-blue-50 text-blue-700 p-3 rounded-lg text-center min-w-[100px]">
-                            <p className="text-xs font-bold uppercase">Fecha</p>
-                            <p className="font-bold text-sm">{appt.formatted_date}</p>
-                        </div>
-                        <div className="flex-1 text-center sm:text-left">
-                            <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
-                                <h3 className="font-bold text-lg text-gray-800">{appt.pet_name}</h3>
-                                <span className="text-xs bg-gray-200 px-2 py-0.5 rounded-full">con {appt.vet_name}</span>
-                            </div>
-                            <p className="text-gray-600 text-sm">{appt.reason}</p>
-                            <p className="text-xs text-gray-400 mt-1">📍 {appt.clinic_name} - {appt.clinic_address}</p>
-                        </div>
-                        <button onClick={() => handleDelete(appt.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors" title="Cancelar cita">❌</button>
+              appointments.map(appt => (
+                <div 
+                  key={appt.id} 
+                  className="bg-white p-5 rounded-card shadow-card border border-primary-100 hover:shadow-card-hover transition-all group"
+                >
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    {/* Fecha */}
+                    <div className="bg-gradient-to-br from-primary-500 to-primary-600 text-white p-4 rounded-xl text-center min-w-[120px] shadow-md">
+                      <Calendar className="w-5 h-5 mx-auto mb-1" />
+                      <p className="text-xs font-semibold uppercase opacity-90">Fecha</p>
+                      <p className="font-bold text-sm mt-1">{appt.formatted_date}</p>
                     </div>
-                ))
-            )}
-        </div>
 
+                    {/* Detalles */}
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="font-bold text-lg text-primary-900">{appt.pet_name}</h3>
+                        <button 
+                          onClick={() => handleDelete(appt.id)} 
+                          className="text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors" 
+                          title="Cancelar cita"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 text-sm text-primary-700">
+                          <Stethoscope className="w-4 h-4" />
+                          <span className="font-medium">Dr. {appt.vet_name}</span>
+                        </div>
+
+                        {appt.reason && (
+                          <div className="flex items-start gap-2 text-sm text-primary-600">
+                            <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                            <span>{appt.reason}</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-2 text-sm text-primary-500">
+                          <MapPin className="w-4 h-4 flex-shrink-0" />
+                          <span>{appt.clinic_name} {appt.clinic_address && `- ${appt.clinic_address}`}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
 
       {/* MODALES */}
@@ -252,7 +365,6 @@ const Appointments = () => {
       )}
       
       {isClinicModalOpen && <ClinicManagement onClose={handleCloseClinicModal} />}
-
     </div>
   );
 };
