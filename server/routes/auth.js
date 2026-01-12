@@ -1,0 +1,384 @@
+const router = require("express").Router();
+const pool = require("../db");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const jwtGenerator = require("../utils/jwtGenerator");
+const authorization = require("../middleware/authorization");
+const crypto = require('crypto');
+const sendEmail = require('../utils/emailService');
+
+
+// ========================================
+// 1. REGISTRO
+// ========================================
+router.post("/register", async (req, res) => {
+  try {
+    const { name, email, password, phone, address, city, country } = req.body;
+    
+    const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+    
+    if (user.rows.length > 0) {
+      return res.status(401).json({ message: "El usuario ya existe" });
+    }
+
+    const saltRound = 10;
+    const salt = await bcrypt.genSalt(saltRound);
+    const bcryptPassword = await bcrypt.hash(password, salt);
+
+    const newUser = await pool.query(
+      `INSERT INTO users (full_name, email, password_hash, phone, address, city, country) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) 
+       RETURNING *`,
+      [name, email, bcryptPassword, phone, address, city, country]
+    );
+
+    const token = jwtGenerator(newUser.rows[0].id);
+    
+    return res.json({ 
+      token,
+      message: "Usuario registrado exitosamente" 
+    });
+
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).json({ message: "Error del servidor" });
+  }
+});
+
+
+// ========================================
+// 2. LOGIN
+// ========================================
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email y contraseña son requeridos" });
+    }
+
+    const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+
+    if (user.rows.length === 0) {
+      return res.status(401).json({ message: "Credenciales incorrectas" });
+    }
+
+    const validPassword = await bcrypt.compare(password, user.rows[0].password_hash);
+    
+    if (!validPassword) {
+      return res.status(401).json({ message: "Credenciales incorrectas" });
+    }
+
+    const token = jwtGenerator(user.rows[0].id);
+    
+    return res.json({ token });
+
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).json({ message: "Error del servidor" });
+  }
+});
+
+
+// ========================================
+// 3. OBTENER PERFIL
+// ========================================
+router.get("/profile", authorization, async (req, res) => {
+  try {
+    const user = await pool.query(
+      "SELECT full_name as name, email, phone, address, city, country FROM users WHERE id = $1", 
+      [req.user]
+    );
+    
+    if (user.rows.length === 0) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+    
+    return res.json(user.rows[0]);
+    
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).json({ message: "Error del servidor" });
+  }
+});
+
+
+// ========================================
+// 4. ACTUALIZAR PERFIL
+// ========================================
+router.put("/profile", authorization, async (req, res) => {
+  try {
+    const { name, phone, address, city, country } = req.body;
+    
+    const update = await pool.query(
+      `UPDATE users 
+       SET full_name = $1, phone = $2, address = $3, city = $4, country = $5 
+       WHERE id = $6 
+       RETURNING full_name as name, email, phone, address, city, country`,
+      [name, phone, address, city, country, req.user]
+    );
+    
+    return res.json(update.rows[0]);
+    
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).json({ message: "Error del servidor" });
+  }
+});
+
+
+// ========================================
+// 5. OBTENER MASCOTAS
+// ========================================
+router.get("/pets", authorization, async (req, res) => {
+  try {
+    const pets = await pool.query(
+      "SELECT * FROM pets WHERE user_id = $1 ORDER BY created_at DESC",
+      [req.user]
+    );
+    
+    return res.json(pets.rows);
+    
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).json({ message: "Error al obtener mascotas" });
+  }
+});
+
+
+// ========================================
+// 6. OBTENER UNA MASCOTA POR ID
+// ========================================
+router.get("/pets/:id", authorization, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const pet = await pool.query(
+      "SELECT * FROM pets WHERE id = $1 AND user_id = $2",
+      [id, req.user]
+    );
+    
+    if (pet.rows.length === 0) {
+      return res.status(404).json({ message: "Mascota no encontrada" });
+    }
+    
+    return res.json(pet.rows[0]);
+    
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).json({ message: "Error al obtener mascota" });
+  }
+});
+
+
+// ========================================
+// 7. CREAR MASCOTA
+// ========================================
+router.post("/pets", authorization, async (req, res) => {
+  try {
+    const { name, species, breed, birth_date, gender, weight, photo_url, allergies, is_sterilized } = req.body;
+    
+    const newPet = await pool.query(
+      `INSERT INTO pets (user_id, name, species, breed, birth_date, gender, weight, photo_url, allergies, is_sterilized)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING *`,
+      [req.user, name, species, breed, birth_date, gender, weight, photo_url, allergies, is_sterilized]
+    );
+    
+    return res.json(newPet.rows[0]);
+    
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).json({ message: "Error al crear mascota" });
+  }
+});
+
+
+// ========================================
+// 8. ACTUALIZAR MASCOTA
+// ========================================
+router.put("/pets/:id", authorization, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, species, breed, birth_date, gender, weight, photo_url, allergies, is_sterilized } = req.body;
+    
+    const updatePet = await pool.query(
+      `UPDATE pets 
+       SET name = $1, species = $2, breed = $3, birth_date = $4, gender = $5, 
+           weight = $6, photo_url = $7, allergies = $8, is_sterilized = $9
+       WHERE id = $10 AND user_id = $11
+       RETURNING *`,
+      [name, species, breed, birth_date, gender, weight, photo_url, allergies, is_sterilized, id, req.user]
+    );
+    
+    if (updatePet.rows.length === 0) {
+      return res.status(404).json({ message: "Mascota no encontrada" });
+    }
+    
+    return res.json(updatePet.rows[0]);
+    
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).json({ message: "Error al actualizar mascota" });
+  }
+});
+
+
+// ========================================
+// 9. ELIMINAR MASCOTA
+// ========================================
+router.delete("/pets/:id", authorization, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const deletePet = await pool.query(
+      "DELETE FROM pets WHERE id = $1 AND user_id = $2 RETURNING *",
+      [id, req.user]
+    );
+    
+    if (deletePet.rows.length === 0) {
+      return res.status(404).json({ message: "Mascota no encontrada" });
+    }
+    
+    return res.json({ message: "Mascota eliminada exitosamente" });
+    
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).json({ message: "Error al eliminar mascota" });
+  }
+});
+
+
+// ========================================
+// 10. VERIFICAR TOKEN
+// ========================================
+router.get("/is-verify", authorization, async (req, res) => {
+  try { 
+    return res.json(true); 
+  } catch (err) { 
+    return res.status(500).json({ message: "Error del servidor" }); 
+  }
+});
+
+
+// ========================================
+// RECUPERACIÓN DE CONTRASEÑA
+// ========================================
+
+// 1. Solicitar recuperación de contraseña
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    console.log('🔑 Solicitud de recuperación para:', email);
+
+    // Verificar que el usuario existe
+    const user = await pool.query(
+      "SELECT id, full_name, email FROM users WHERE email = $1",
+      [email]
+    );
+
+    if (user.rows.length === 0) {
+      // Por seguridad, no revelar si el email existe o no
+      return res.json({ 
+        message: "Si el email existe, recibirás un link de recuperación" 
+      });
+    }
+
+    const userId = user.rows[0].id;
+    const userName = user.rows[0].full_name;
+
+    // Generar token JWT con expiración de 1 hora
+    const resetToken = jwt.sign(
+      { userId: userId, purpose: 'password-reset' },
+      process.env.jwtSecret, // ✅ CAMBIADO
+      { expiresIn: "1h" }
+    );
+
+    // URL del frontend para resetear contraseña
+    const frontendURL = process.env.FRONTEND_URL || "https://pet-health-s659.vercel.app";
+    const resetLink = `${frontendURL}/reset-password?token=${resetToken}`;
+
+    // Enviar email con SendGrid
+    const subject = "🔐 Recupera tu contraseña - PetHealth";
+    const message = `Hola ${userName},\n\nRecibimos una solicitud para restablecer tu contraseña en PetHealth.\n\nHaz clic en el siguiente enlace para crear una nueva contraseña:\n${resetLink}\n\n⚠️ Este enlace expirará en 1 hora.\n\nSi no solicitaste este cambio, puedes ignorar este correo.\n\n¡Gracias por usar PetHealth! 🐾`;
+
+    const emailResult = await sendEmail(email, subject, message);
+
+    if (emailResult.success) {
+      console.log('✅ Email de recuperación enviado a:', email);
+    } else {
+      console.error('❌ Error al enviar email:', emailResult.error);
+    }
+
+    res.json({ 
+      message: "Si el email existe, recibirás un link de recuperación" 
+    });
+
+  } catch (err) {
+    console.error('❌ Error en forgot-password:', err.message);
+    res.status(500).json({ error: "Error del servidor" });
+  }
+});
+
+// 2. Resetear contraseña con token
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    console.log('🔄 Intento de reseteo de contraseña');
+
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: "Token y contraseña son requeridos" });
+    }
+
+    // Verificar token JWT
+    let payload;
+    try {
+      payload = jwt.verify(token, process.env.jwtSecret); // ✅ CAMBIADO
+    } catch (err) {
+      return res.status(401).json({ error: "Token inválido o expirado" });
+    }
+
+    // Verificar que el token sea para reseteo de contraseña
+    if (payload.purpose !== 'password-reset') {
+      return res.status(401).json({ error: "Token inválido" });
+    }
+
+    const userId = payload.userId;
+
+    // Hashear nueva contraseña
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    // Actualizar contraseña en la base de datos
+    await pool.query(
+      "UPDATE users SET password_hash = $1 WHERE id = $2",
+      [hashedPassword, userId]
+    );
+
+    console.log('✅ Contraseña actualizada para usuario:', userId);
+
+    // Opcional: Enviar email de confirmación
+    const user = await pool.query(
+      "SELECT full_name, email FROM users WHERE id = $1",
+      [userId]
+    );
+
+    if (user.rows.length > 0) {
+      const confirmSubject = "✅ Tu contraseña ha sido actualizada - PetHealth";
+      const confirmMessage = `Hola ${user.rows[0].full_name},\n\nTu contraseña de PetHealth ha sido actualizada exitosamente.\n\nSi no realizaste este cambio, contacta a soporte inmediatamente.\n\n¡Gracias por usar PetHealth! 🐾`;
+      
+      await sendEmail(user.rows[0].email, confirmSubject, confirmMessage);
+    }
+
+    res.json({ message: "Contraseña actualizada exitosamente" });
+
+  } catch (err) {
+    console.error('❌ Error en reset-password:', err.message);
+    res.status(500).json({ error: "Error del servidor" });
+  }
+});
+
+
+module.exports = router;

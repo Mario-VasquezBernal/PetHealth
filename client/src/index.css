@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+/* Prevenir que los botones desaparezcan al hacer clic */
+button:active,
+button:focus {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+button span {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Otros estilos... */

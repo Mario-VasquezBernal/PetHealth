@@ -1,0 +1,8 @@
+{
+  "appId": "com.tuusuariomario.pethealth",
+  "appName": "PetHealth",
+  "webDir": "dist",  
+  "server": {
+    "androidScheme": "https"
+  }
+}
