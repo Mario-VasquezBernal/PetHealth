@@ -1,3 +1,12 @@
+// ============================================
+// PROTECTEDROUTE.JSX
+// ============================================
+// HOC (Higher Order Component) que protege rutas privadas verificando token JWT en localStorage
+// Si NO existe token → redirige a /login con replace (no deja volver atrás)
+// Si SÍ existe token → renderiza <Outlet /> (rutas hijas protegidas)
+// Usado en App.jsx para envolver rutas como /home, /pets/:id, /profile, /appointments, etc.
+// ============================================
+
 import { Navigate, Outlet } from 'react-router-dom';
 
 const ProtectedRoute = () => {

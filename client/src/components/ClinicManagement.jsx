@@ -1,3 +1,13 @@
+// ============================================
+// CLINICMANAGEMENT.JSX
+// ============================================
+// Modal para gestionar clínicas veterinarias
+// Formulario para crear nuevas clínicas con campos: nombre*, dirección, ciudad, país, teléfono
+// Botón de geolocalización que obtiene automáticamente la dirección usando GPS del navegador
+// Lista de todas las clínicas registradas con opción de eliminar
+// Usa API de Nominatim (OpenStreetMap) para convertir coordenadas GPS a dirección legible
+// ============================================
+
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { getClinics, createClinic, deleteClinic } from '../dataManager';

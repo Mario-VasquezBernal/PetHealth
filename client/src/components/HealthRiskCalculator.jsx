@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { AlertTriangle, Heart, TrendingUp, Info, Activity, Shield } from 'lucide-react';
 
@@ -408,3 +409,51 @@ const HealthRiskCalculator = ({ pet }) => {
 };
 
 export default HealthRiskCalculator;
+// ============================================
+// HEALTHRISKCALCULATOR.JSX
+// ============================================
+// Componente de análisis predictivo de salud para mascotas usando modelos probabilísticos
+// Calcula automáticamente riesgos de 5 condiciones médicas basado en datos del animal
+// Implementa métodos estadísticos: Teorema de Bayes, Distribución Normal (Z-score), 
+// Probabilidad Condicional y Modelo de Scoring para cuantificar riesgos
+//
+// ENFERMEDADES ANALIZADAS:
+// 1. OBESIDAD: Usa distribución normal (Z-score) comparando peso actual vs ideal por especie/raza
+//    - Perros pequeños: media 8kg ±3kg | medianos: 20kg ±5kg | grandes: 35kg ±8kg
+//    - Gatos: media 4.5kg ±1kg
+//    - Z-score >1σ: 45% riesgo | >2σ: 75% riesgo
+//
+// 2. CARDIOPATÍAS: Teorema de Bayes con probabilidad prior ajustada por raza de riesgo
+//    - Razas alto riesgo (Cavalier, Boxer, Dóberman): prior 0.25
+//    - Otras razas: prior 0.05
+//    - Factores: edad (>10 años: 4.5x) + peso (>40kg: 2.5x)
+//    - Umbral: >50% alto riesgo
+//
+// 3. ARTRITIS: Probabilidad condicional basada en edad + factores agravantes (peso, raza grande)
+//    - <3 años: 5% | 3-6 años: 15% | 6-9 años: 35% | 9-12 años: 60% | >12 años: 80%
+//    - Razas grandes (Labrador, Golden, Pastor): multiplicador 1.4x
+//    - Sobrepeso (>35kg): multiplicador 1.25x
+//
+// 4. DIABETES: Sistema de scoring con puntos acumulativos (edad + peso + esterilización + raza)
+//    - Score máximo: 105 puntos
+//    - Edad >10 años: +40pts | Peso elevado: +30pts | Esterilizado: +15pts | Raza predispuesta: +20pts
+//    - Razas riesgo: Beagle, Dachshund, Poodle, Schnauzer
+//    - >55 pts: alto riesgo
+//
+// 5. ENFERMEDAD PERIODONTAL: Modelo basado en edad con ajuste por especie
+//    - <2 años: 15% | 2-4 años: 35% | 4-7 años: 60% | >7 años: 85%
+//    - Gatos: probabilidad reducida 0.85x vs perros
+//
+// CARACTERÍSTICAS:
+// - Cada riesgo muestra: porcentaje de probabilidad, descripción técnica, fórmula matemática,
+//   severidad (low/medium/high), recomendaciones preventivas
+// - Clasificación general de riesgo: Bajo (<35%), Moderado (35-60%), Alto (>60%)
+// - No muestra riesgos con probabilidad <15-20% para evitar falsos positivos
+// - Visualización con colores por severidad y iconos específicos por patología
+// - Incluye disclaimer médico-legal sobre uso orientativo del análisis
+//
+// PROPS:
+// - pet: objeto con datos de la mascota (birth_date, weight, type/species, breed, is_sterilized)
+//
+// VALIDACIÓN: Basado en estudios epidemiológicos veterinarios y estándares de peso por raza
+// ============================================

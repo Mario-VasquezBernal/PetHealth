@@ -1,3 +1,14 @@
+// ============================================
+// QRGENERATOR.JSX
+// ============================================
+// Genera código QR temporal (15 minutos) para acceso veterinario sin login
+// Muestra imagen QR, contador regresivo de expiración y botones de acción
+// Permite: descargar QR como imagen PNG, copiar URL de acceso directo, renovar QR
+// Estado vacío muestra botón para generar, estado con QR muestra imagen + timer + acciones
+// Timer actualizado cada segundo, marca "⚠️ Expirado" cuando llega a 0
+// QR funciona escaneándolo o compartiendo el vetAccessUrl
+// ============================================
+
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { generateQRCode } from '../dataManager';

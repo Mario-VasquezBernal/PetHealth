@@ -1,8 +1,68 @@
+// ============================================
+// DATAMANAGER.JS
+// ============================================
+// Capa de abstracción para todas las llamadas HTTP a la API backend
+// Centraliza la lógica de comunicación con el servidor
+// Maneja autenticación mediante tokens JWT en localStorage
+// URL base configurable mediante variable de entorno (VITE_API_URL)
+//
+// SECCIONES:
+//
+// 1. AUTENTICACIÓN
+//    - registerUser: Crea cuenta nueva (retorna token)
+//    - loginUser: Inicia sesión (retorna token)
+//    - getUserProfile: Obtiene datos del usuario autenticado
+//    - updateUserProfile: Actualiza perfil de usuario
+//
+// 2. MASCOTAS (Pets)
+//    - getPets: Lista todas las mascotas del usuario
+//    - getPetById: Obtiene una mascota específica (con opción skipCache)
+//    - addPetToStorage: Crea nueva mascota
+//    - updatePet: Actualiza datos de mascota
+//    - deletePetFromStorage: Elimina mascota
+//
+// 3. CITAS (Appointments)
+//    - getAppointments: Lista citas del usuario
+//    - createAppointment: Crea nueva cita
+//    - updateAppointment: Modifica cita existente
+//    - deleteAppointment: Cancela cita
+//
+// 4. VETERINARIOS (Veterinarians)
+//    - getVeterinarians: Lista veterinarios
+//    - createVeterinarian: Registra nuevo veterinario
+//    - updateVeterinarian: Actualiza datos de veterinario
+//    - deleteVeterinarian: Elimina veterinario
+//
+// 5. CLÍNICAS (Clinics)
+//    - getClinics: Lista clínicas
+//    - createClinic: Registra nueva clínica
+//    - updateClinic: Actualiza clínica
+//    - deleteClinic: Elimina clínica
+//
+// 6. TAREAS (Tasks) - Sistema de recordatorios
+//    - getTasks: Lista tareas pendientes
+//    - createTask: Crea nueva tarea
+//    - updateTask: Actualiza tarea
+//    - deleteTask: Elimina tarea
+//
+// 7. SISTEMA QR Y REGISTROS MÉDICOS
+//    - generateQRCode: Genera token QR temporal para mascota (24h)
+//    - validateQRToken: Valida token QR (público, sin auth)
+//    - createMedicalRecord: Crea registro médico (público con token)
+//    - getMedicalRecords: Obtiene historial médico de mascota
+//
+// AUTENTICACIÓN:
+// - Funciones protegidas incluyen header: Authorization: Bearer <token>
+// - Token JWT almacenado en localStorage
+// - Funciones QR públicas no requieren token de usuario
+//
+// MANEJO DE ERRORES:
+// - Lanza Error con mensaje descriptivo si response.ok === false
+// - Componentes capturan errores y muestran toasts al usuario
+// ============================================
+
+
 const API_URL = import.meta.env.VITE_API_URL || 'https://pethealth-production.up.railway.app';
-
-
-
-
 
 //const API_URL = 'http://localhost:5000';
 //const API_URL = 'http://10.0.2.2:5000';
@@ -82,11 +142,9 @@ export const getPets = async () => {
   return response.json();
 };
 
-// ✅ MODIFICADO: Agregar parámetro skipCache
 export const getPetById = async (id, skipCache = false) => {
   const token = localStorage.getItem('token');
   
-  // ✅ Agregar timestamp para evitar caché del navegador
   const url = skipCache 
     ? `${API_URL}/auth/pets/${id}?t=${Date.now()}`
     : `${API_URL}/auth/pets/${id}`;
@@ -94,7 +152,7 @@ export const getPetById = async (id, skipCache = false) => {
   const response = await fetch(url, {
     headers: { 
       'Authorization': `Bearer ${token}`,
-      'Cache-Control': 'no-cache' // ✅ Forzar no usar caché
+      'Cache-Control': 'no-cache'
     }
   });
   
@@ -360,10 +418,9 @@ export const deleteTask = async (id) => {
 };
 
 // ========================================
-// 🆕 SISTEMA QR Y REGISTROS MÉDICOS
+// SISTEMA QR Y REGISTROS MÉDICOS
 // ========================================
 
-// Generar código QR para una mascota
 export const generateQRCode = async (petId) => {
   const token = localStorage.getItem('token');
   const response = await fetch(`${API_URL}/qr/generate/${petId}`, {
@@ -382,7 +439,6 @@ export const generateQRCode = async (petId) => {
   return response.json();
 };
 
-// Validar token QR (público, sin auth)
 export const validateQRToken = async (token) => {
   const response = await fetch(`${API_URL}/qr/validate/${token}`, {
     headers: {
@@ -398,7 +454,6 @@ export const validateQRToken = async (token) => {
   return response.json();
 };
 
-// Crear registro médico (público con token QR)
 export const createMedicalRecord = async (recordData) => {
   const response = await fetch(`${API_URL}/medical-records/create`, {
     method: 'POST',
@@ -416,7 +471,6 @@ export const createMedicalRecord = async (recordData) => {
   return response.json();
 };
 
-// Obtener historial médico de una mascota
 export const getMedicalRecords = async (petId) => {
   const token = localStorage.getItem('token');
   const response = await fetch(`${API_URL}/medical-records/pet/${petId}`, {

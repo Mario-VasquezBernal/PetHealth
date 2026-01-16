@@ -1,3 +1,26 @@
+// ============================================
+// VETACCESS.JSX
+// ============================================
+// Página pública de acceso veterinario mediante código QR
+// Permite a veterinarios crear registros médicos sin necesidad de login
+// Se accede escaneando QR generado por el dueño (contiene token temporal)
+// 
+// FLUJO:
+// 1. Valida token QR del URL (tiene tiempo de expiración)
+// 2. Si válido: muestra datos de la mascota y formulario de registro médico
+// 3. Veterinario completa: nombre, clínica, motivo, diagnóstico, peso, notas
+// 4. Puede agregar múltiples tratamientos (medicamentos, vacunas, procedimientos)
+// 5. Al guardar: crea registro médico vinculado a la mascota
+// 6. Redirige al inicio después de 3 segundos
+//
+// Estados especiales:
+// - Validando: Spinner mientras verifica token
+// - Token inválido/expirado: Mensaje de error
+// - Éxito: Confirmación de registro guardado
+//
+// NO requiere autenticación (acceso público con token temporal)
+// ============================================
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';

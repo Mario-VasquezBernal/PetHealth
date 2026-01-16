@@ -1,3 +1,32 @@
+// ============================================
+// VETQRACCESS.JSX
+// ============================================
+// Página simplificada de acceso veterinario mediante QR
+// Similar a VetAccess.jsx pero con formulario más compacto
+// Permite crear registros médicos sin autenticación usando token QR temporal
+//
+// DIFERENCIAS con VetAccess.jsx:
+// - Formulario más simple (menos campos)
+// - No incluye datos del veterinario/clínica
+// - No permite agregar múltiples tratamientos dinámicamente
+// - Campos: diagnóstico*, tratamiento, peso medido, notas, próxima visita
+//
+// FLUJO:
+// 1. Valida token QR del URL
+// 2. Muestra datos de mascota y dueño
+// 3. Destaca alergias si existen
+// 4. Formulario simplificado de consulta
+// 5. Al guardar: crea registro médico y limpia formulario
+// 6. Permite múltiples registros consecutivos sin recargar
+//
+// Estados:
+// - Loading: Validando token
+// - Error: Token inválido (redirige a / en 3 seg)
+// - Success: Formulario limpio, listo para nuevo registro
+//
+// Acceso público (no requiere login, solo token válido)
+// ============================================
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';

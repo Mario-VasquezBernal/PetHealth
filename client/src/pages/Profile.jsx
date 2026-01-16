@@ -1,8 +1,34 @@
+// ============================================
+// PROFILE.JSX
+// ============================================
+// Página de perfil de usuario
+// Muestra y permite editar información personal del usuario
+// Campos editables: nombre, teléfono, dirección, ciudad, país
+// Email es solo lectura (no se puede modificar)
+// Carga datos del usuario al montar el componente
+// Botón "Cancelar" recarga los datos originales descartando cambios
+// Actualiza perfil en el servidor al guardar
+// ============================================
+
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import Sidebar from '../components/Sidebar';
+import MobileHeader from '../components/MobileHeader';
 import { getUserProfile, updateUserProfile } from '../dataManager';
+import { 
+  User, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  Home as HomeIcon,
+  Globe,
+  Save,
+  X
+} from 'lucide-react';
 
 const Profile = () => {
+  const [user, setUser] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [formData, setFormData] = useState({ 
     name: '', 
     email: '', 
@@ -12,22 +38,27 @@ const Profile = () => {
     country: ''
   });
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState({ text: '', type: '' });
+  const [saving, setSaving] = useState(false);
 
-  // Cargar datos al entrar
   useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const data = await getUserProfile();
-        if (data) setFormData(data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
     loadProfile();
   }, []);
+
+  const loadProfile = async () => {
+    try {
+      setLoading(true);
+      const data = await getUserProfile();
+      if (data) {
+        setFormData(data);
+        setUser(data);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Error al cargar perfil');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -35,90 +66,223 @@ const Profile = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage({ text: '', type: '' });
     
     try {
+      setSaving(true);
       await updateUserProfile(formData);
-      setMessage({ text: '¡Perfil actualizado con éxito! ✅', type: 'success' });
+      setUser(formData);
+      toast.success('¡Perfil actualizado con éxito! ✅');
     } catch (err) {
-      setMessage({ text: 'Error al actualizar el perfil ❌', type: 'error' });
+      console.error(err);
+      toast.error('Error al actualizar el perfil ❌');
+    } finally {
+      setSaving(false);
     }
   };
 
-  if (loading) return <div className="text-center p-10">Cargando perfil...</div>;
+  const handleCancel = () => {
+    loadProfile();
+    toast.info('Cambios descartados');
+  };
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
+    <div className="min-h-screen bg-gray-50 flex">
       
-      {/* BOTÓN VOLVER AL DASHBOARD */}
-      <Link to="/" className="text-blue-600 hover:underline mb-4 inline-flex items-center gap-2 font-medium transition-colors hover:text-blue-800">
-        &larr; Volver al Dashboard
-      </Link>
+      <Sidebar 
+        user={user}
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        onNewPet={null}
+      />
 
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-        <div className="bg-blue-600 p-6 text-white">
-            <h1 className="text-2xl font-bold">Mi Perfil 👤</h1>
-            <p className="opacity-90">Mantén tu información actualizada</p>
+      <div className="flex-1 lg:ml-72">
+        
+        <MobileHeader 
+          onMenuClick={() => setSidebarOpen(true)}
+          onNewPet={null}
+        />
+
+        {/* Header Desktop */}
+        <div className="hidden lg:block bg-white border-b border-gray-100">
+          <div className="px-8 py-5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-gray-900" strokeWidth={2} />
+              <span className="text-sm font-medium text-gray-900">Cuenca, Ecuador</span>
+            </div>
+          </div>
         </div>
 
-        <div className="p-8">
-            {message.text && (
-                <div className={`p-4 rounded-lg mb-6 ${message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {message.text}
-                </div>
-            )}
+        <main className="px-4 lg:px-8 py-8 max-w-4xl mx-auto">
+          
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <User className="w-6 h-6 text-white" strokeWidth={2} />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Mi Perfil</h1>
+                <p className="text-gray-600">Mantén tu información actualizada</p>
+              </div>
+            </div>
+          </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-                
-                {/* Email (Solo lectura) */}
-                <div>
-                    <label className="block text-sm font-medium text-gray-500">Correo Electrónico (No editable)</label>
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+              
+              {/* Header Card */}
+              <div className="bg-gradient-to-r from-blue-600 to-cyan-600 p-6 text-white">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                    <User className="w-8 h-8 text-white" strokeWidth={2} />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold">{formData.name || 'Usuario'}</h2>
+                    <p className="text-blue-100">{formData.email}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="p-8">
+                <div className="space-y-6">
+                  
+                  {/* Email (Solo lectura) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-gray-500" />
+                      Correo Electrónico (No editable)
+                    </label>
                     <input 
-                        type="email" 
-                        value={formData.email} 
-                        disabled 
-                        className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-gray-500 mt-1 cursor-not-allowed"
+                      type="email" 
+                      value={formData.email} 
+                      disabled 
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
                     />
-                </div>
+                  </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Grid de campos */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    {/* Nombre Completo */}
                     <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700">Nombre Completo</label>
-                        <input name="name" type="text" value={formData.name} onChange={handleChange} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none mt-1" />
+                      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                        <User className="w-4 h-4" />
+                        Nombre Completo
+                      </label>
+                      <input 
+                        name="name" 
+                        type="text" 
+                        value={formData.name} 
+                        onChange={handleChange} 
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                        placeholder="Ej: Juan Pérez"
+                      />
                     </div>
 
+                    {/* Teléfono */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Teléfono</label>
-                        <input name="phone" type="tel" value={formData.phone} onChange={handleChange} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none mt-1" />
+                      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                        <Phone className="w-4 h-4" />
+                        Teléfono
+                      </label>
+                      <input 
+                        name="phone" 
+                        type="tel" 
+                        value={formData.phone} 
+                        onChange={handleChange} 
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                        placeholder="Ej: 0999123456"
+                      />
                     </div>
 
+                    {/* Ciudad */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Ciudad</label>
-                        <input name="city" type="text" value={formData.city} onChange={handleChange} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none mt-1" />
+                      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        Ciudad
+                      </label>
+                      <input 
+                        name="city" 
+                        type="text" 
+                        value={formData.city} 
+                        onChange={handleChange} 
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                        placeholder="Ej: Cuenca"
+                      />
                     </div>
 
+                    {/* Dirección */}
                     <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700">Dirección</label>
-                        <input name="address" type="text" value={formData.address} onChange={handleChange} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none mt-1" />
+                      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                        <HomeIcon className="w-4 h-4" />
+                        Dirección
+                      </label>
+                      <input 
+                        name="address" 
+                        type="text" 
+                        value={formData.address} 
+                        onChange={handleChange} 
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                        placeholder="Ej: Av. 10 de Agosto y Gran Colombia"
+                      />
                     </div>
                     
+                    {/* País */}
                     <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700">País</label>
-                        <input name="country" type="text" value={formData.country} onChange={handleChange} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none mt-1" />
+                      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                        <Globe className="w-4 h-4" />
+                        País
+                      </label>
+                      <input 
+                        name="country" 
+                        type="text" 
+                        value={formData.country} 
+                        onChange={handleChange} 
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                        placeholder="Ej: Ecuador"
+                      />
                     </div>
-                </div>
+                  </div>
 
-                <div className="pt-4 flex justify-between items-center">
-                    <Link to="/" className="text-gray-500 hover:text-gray-700 font-medium">
-                        Cancelar
-                    </Link>
-
-                    <button className="bg-blue-600 text-white font-bold px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors shadow-lg">
-                        Guardar Cambios
+                  {/* Botones */}
+                  <div className="pt-6 flex gap-4 border-t border-gray-100">
+                    <button 
+                      type="button"
+                      onClick={handleCancel}
+                      className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-6 py-3.5 rounded-xl transition-all flex items-center justify-center gap-2"
+                    >
+                      <X className="w-5 h-5" strokeWidth={2} />
+                      Cancelar
                     </button>
+
+                    <button 
+                      type="submit"
+                      disabled={saving}
+                      className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:from-gray-300 disabled:to-gray-400 text-white font-semibold px-6 py-3.5 rounded-xl transition-all shadow-lg shadow-blue-600/30 hover:shadow-xl disabled:shadow-none flex items-center justify-center gap-2 disabled:cursor-not-allowed"
+                    >
+                      {saving ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          Guardando...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-5 h-5" strokeWidth={2} />
+                          Guardar Cambios
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
-            </form>
-        </div>
+              </form>
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );

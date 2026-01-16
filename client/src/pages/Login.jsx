@@ -1,16 +1,27 @@
+// ============================================
+// LOGIN.JSX
+// ============================================
+// Página de inicio de sesión
+// Formulario con email y contraseña
+// Valida credenciales contra el servidor
+// Guarda token JWT en localStorage al iniciar sesión correctamente
+// Redirige a /home después de login exitoso
+// Incluye función de "Olvidé mi contraseña" que envía email de recuperación
+// Si ya hay token válido, redirige automáticamente a /home
+// Link a página de registro
+// ============================================
+
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { loginUser } from '../dataManager';
 import { Heart, Mail, Lock } from 'lucide-react';
 
-
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-
 
   // Si ya hay sesión iniciada, no permitir ver /login
   useEffect(() => {
@@ -20,21 +31,17 @@ const Login = () => {
     }
   }, [navigate]);
 
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-
 
     if (!email || !password) {
       toast.error('Por favor completa todos los campos');
       return;
     }
 
-
     setLoading(true);
     try {
       const data = await loginUser({ email, password });
-
 
       localStorage.setItem('token', data.token);
       toast.success('¡Bienvenido!');
@@ -45,7 +52,6 @@ const Login = () => {
       setLoading(false);
     }
   };
-
 
   const handleForgotPassword = async () => {
     const userEmail = prompt('Ingresa tu email para recuperar tu contraseña:');
@@ -81,21 +87,19 @@ const Login = () => {
     }
   };
 
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-sky-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo/Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl mb-4 shadow-xl">
-            <Heart className="w-10 h-10 text-white" />
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-3xl mb-4 shadow-xl shadow-blue-600/30">
+            <Heart className="w-10 h-10 text-white" fill="white" strokeWidth={1.5} />
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-2">
             PetHealth
           </h1>
           <p className="text-gray-600 text-lg">Cuida a tus mascotas con amor</p>
         </div>
-
 
         {/* Card de Login */}
         <div className="bg-white rounded-3xl shadow-2xl p-8 backdrop-blur-lg border border-gray-100">
@@ -104,7 +108,6 @@ const Login = () => {
               <h2 className="text-2xl font-bold text-gray-800">Bienvenido 👋</h2>
               <p className="text-gray-600">Ingresa tus datos para acceder</p>
             </div>
-
 
             {/* Email Input */}
             <div className="space-y-2">
@@ -120,12 +123,11 @@ const Login = () => {
                   placeholder="tu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white"
+                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white"
                   required
                 />
               </div>
             </div>
-
 
             {/* Password Input */}
             <div className="space-y-2">
@@ -141,18 +143,17 @@ const Login = () => {
                   placeholder="••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white"
+                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white"
                   required
                 />
               </div>
             </div>
 
-
             {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-emerald-600 hover:to-teal-700 focus:ring-4 focus:ring-emerald-300 transition-all duration-200 transform hover:scale-[1.02] hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-blue-700 hover:to-cyan-700 focus:ring-4 focus:ring-blue-300 transition-all duration-200 transform hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-600/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               {loading ? (
                 <span className="flex items-center justify-center">
@@ -179,35 +180,39 @@ const Login = () => {
               )}
             </button>
 
-
             {/* Forgot Password Link */}
             <div className="text-center">
               <button
                 type="button"
                 onClick={handleForgotPassword}
-                className="text-emerald-600 hover:text-emerald-700 text-sm font-medium hover:underline transition-colors"
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium hover:underline transition-colors"
               >
                 ¿Olvidaste tu contraseña?
               </button>
             </div>
-
 
             {/* Register Link */}
             <p className="text-center text-gray-600">
               ¿No tienes cuenta?{' '}
               <Link
                 to="/register"
-                className="text-emerald-600 font-semibold hover:text-emerald-700 hover:underline transition-colors"
+                className="text-blue-600 font-semibold hover:text-blue-700 hover:underline transition-colors"
               >
                 Regístrate gratis
               </Link>
             </p>
           </form>
         </div>
+
+        {/* Footer decorativo */}
+        <div className="text-center mt-8">
+          <p className="text-gray-500 text-sm">
+            Control Veterinario · Cuenca, Ecuador
+          </p>
+        </div>
       </div>
     </div>
   );
 };
-
 
 export default Login;

@@ -1,3 +1,14 @@
+// ============================================
+// PETCARD.JSX
+// ============================================
+// Card visual para mostrar mascota en grid/lista del home
+// Imagen superior (con fallback por especie), info básica y botón "Ver detalles"
+// Datos: nombre, tipo/especie, raza, género (♂/♀), peso, edad calculada desde fecha de nacimiento
+// Botón eliminar (icono basura) en esquina superior derecha
+// Hover effects: imagen zoom, shadow elevado, botones con bg hover
+// Link a /pets/:id para ver detalles completos
+// ============================================
+
 import { Link } from 'react-router-dom';
 import { Trash2, ChevronRight, Calendar } from 'lucide-react';
 

@@ -1,3 +1,13 @@
+// ============================================
+// WEIGHTPREDICTION.JSX
+// ============================================
+// Predicción de peso futuro usando regresión lineal por mínimos cuadrados
+// Requiere ≥2 mediciones de peso del historial médico
+// Calcula: tendencia (increasing/decreasing/stable), cambio mensual, predicciones a 3/6/12 meses con IC 95%
+// Modelo: y = mx + b, muestra ecuación, desviación estándar y datos estadísticos
+// Visualiza tendencia con ícono/color y cards por período con intervalos de confianza
+// ============================================
+
 import { useState, useEffect } from 'react';
 import { getMedicalRecords } from '../dataManager';
 import { TrendingUp, TrendingDown, AlertTriangle, LineChart, Calendar } from 'lucide-react';

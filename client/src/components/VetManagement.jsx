@@ -1,3 +1,15 @@
+// ============================================
+// VETMANAGEMENT.JSX
+// ============================================
+// Modal para gestionar veterinarios con formulario de registro y lista completa
+// Formulario: nombre*, especialidad*, clínica (opcional - permite independientes)
+// Asocia veterinarios con clínicas del sistema o marca como "Consultorio Independiente"
+// Carga simultánea de veterinarios y clínicas con Promise.all
+// Lista muestra: nombre, especialidad, clínica asociada (o ícono casa si independiente), botón eliminar
+// Validación: solo nombre y especialidad obligatorios, clinic_id se envía solo si tiene valor
+// Contador de doctores registrados en badge, mensaje informativo si no hay clínicas creadas
+// ============================================
+
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { 

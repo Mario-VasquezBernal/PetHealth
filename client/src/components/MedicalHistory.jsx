@@ -1,3 +1,12 @@
+// ============================================
+// MEDICALHISTORY.JSX
+// ============================================
+// Muestra historial médico de una mascota (registros creados por veterinarios vía QR)
+// Cada registro incluye: fecha, diagnóstico, tratamiento, notas, peso medido, veterinario y clínica
+// Estados: loading (spinner), sin registros (mensaje informativo), lista de cards con datos
+// Botón para actualizar/refrescar historial
+// ============================================
+
 import { useState, useEffect } from 'react';
 import { getMedicalRecords } from '../dataManager';
 import { FileText, Calendar, Stethoscope, AlertCircle, Loader, Weight } from 'lucide-react'; // ✅ Agregar Weight

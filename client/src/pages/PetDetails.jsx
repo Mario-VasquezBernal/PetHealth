@@ -1,14 +1,30 @@
+// ============================================
+// PETDETAILS.JSX
+// ============================================
+// Página de detalles completos de una mascota específica
+// Muestra foto, información básica (edad, peso, género, alergias)
+// Sistema de tabs con 3 secciones:
+//   1. RESUMEN: Estadísticas (última consulta, total de visitas), gráfico de predicción de peso, análisis de riesgo de salud
+//   2. CÓDIGO QR: Generador de QR para acceso veterinario temporal
+//   3. HISTORIAL: Lista completa de registros médicos (consultas, vacunas, tratamientos)
+// Botones de acción: Editar mascota, Eliminar mascota
+// Botón de actualizar datos (refresca información sin recargar página)
+// Cálculo automático de edad desde fecha de nacimiento
+// Imagen por defecto según especie si no tiene foto
+// ============================================
+
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { getPetById, deletePetFromStorage, getMedicalRecords } from '../dataManager';
+import Sidebar from '../components/Sidebar';
+import MobileHeader from '../components/MobileHeader';
+import { getPetById, deletePetFromStorage, getMedicalRecords, getUserProfile } from '../dataManager';
 import QRGenerator from '../components/QRGenerator';
 import MedicalHistory from '../components/MedicalHistory';
 import WeightPrediction from '../components/WeightPrediction';
 import HealthRiskCalculator from '../components/HealthRiskCalculator';
 
 import { 
-  ArrowLeft, 
   Calendar, 
   Weight, 
   Heart,
@@ -21,12 +37,15 @@ import {
   FileText,
   Activity,
   TrendingUp,
-  RefreshCw
+  RefreshCw,
+  MapPin
 } from 'lucide-react';
 
 const PetDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pet, setPet] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -37,19 +56,23 @@ const PetDetails = () => {
   });
 
   useEffect(() => {
-    loadPet();
-    loadMedicalStats();
+    loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const loadPet = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const data = await getPetById(id);
-      setPet(data);
+      const [petData, userData] = await Promise.all([
+        getPetById(id),
+        getUserProfile()
+      ]);
+      setPet(petData);
+      setUser(userData);
+      await loadMedicalStats();
     } catch (error) {
       console.error(error);
-      toast.error("Error al cargar la mascota");
+      toast.error("Error al cargar datos");
       navigate('/home');
     } finally {
       setLoading(false);
@@ -135,451 +158,318 @@ const PetDetails = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full"></div>
+      <div className="min-h-screen bg-gray-50 flex">
+        <Sidebar user={user} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} onNewPet={null} />
+        <div className="flex-1 lg:ml-72 flex items-center justify-center">
+          <div className="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
+        </div>
       </div>
     );
   }
 
   if (!pet) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-primary-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-primary-900 mb-2">Mascota no encontrada</h2>
-          <Link to="/home" className="text-primary-600 hover:underline">Volver al inicio</Link>
+      <div className="min-h-screen bg-gray-50 flex">
+        <Sidebar user={user} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} onNewPet={null} />
+        <div className="flex-1 lg:ml-72 flex items-center justify-center">
+          <div className="text-center">
+            <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Mascota no encontrada</h2>
+            <button 
+              onClick={() => navigate('/home')}
+              className="text-blue-600 hover:underline"
+            >
+              Volver al inicio
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 pb-20 md:pb-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gray-50 flex">
+      
+      <Sidebar 
+        user={user}
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        onNewPet={null}
+      />
+
+      <div className="flex-1 lg:ml-72">
         
-        {/* Header */}
-        <Link 
-          to="/home" 
-          className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 font-medium mb-6 transition-colors group"
-        >
-          <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-          Volver a inicio
-        </Link>
+        <MobileHeader 
+          onMenuClick={() => setSidebarOpen(true)}
+          onNewPet={null}
+        />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Columna Izquierda: Info de la Mascota */}
-          <div className="lg:col-span-1 space-y-4">
-            
-            {/* Card de Imagen */}
-            <div className="bg-white rounded-card overflow-hidden shadow-card border border-primary-100">
-              <div className="relative aspect-square bg-gradient-to-br from-primary-100 to-primary-50">
-                <img 
-                  src={pet.photo_url || getDefaultImage(pet.type || pet.species)} 
-                  alt={pet.name}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.target.src = getDefaultImage(pet.type || pet.species);
-                  }}
-                />
-                <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-semibold text-primary-700 border border-primary-200">
-                  {pet.type || pet.species}
-                </div>
-              </div>
-              
-              <div className="p-6">
-                <h1 className="text-3xl font-bold text-primary-900 mb-2">{pet.name}</h1>
-                <p className="text-primary-600 text-lg mb-4">{pet.breed || 'Raza mixta'}</p>
-                
-                <div className="flex gap-2">
-                  <button 
-                    type="button"
-                    onClick={() => navigate(`/pets/${id}/edit`)}
-                    style={{
-                      flex: 1,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem',
-                      backgroundColor: '#10B981',
-                      color: '#ffffff',
-                      padding: '0.625rem',
-                      borderRadius: '0.75rem',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontWeight: '500',
-                      transition: 'all 0.2s',
-                      opacity: 1,
-                      visibility: 'visible'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#059669';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#10B981';
-                    }}
-                  >
-                    <Edit style={{ width: '1rem', height: '1rem', opacity: 1 }} />
-                    <span style={{ opacity: 1, visibility: 'visible' }}>Editar</span>
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={handleDelete}
-                    style={{
-                      flex: 1,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem',
-                      backgroundColor: '#ef4444',
-                      color: '#ffffff',
-                      padding: '0.625rem',
-                      borderRadius: '0.75rem',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontWeight: '500',
-                      transition: 'all 0.2s',
-                      opacity: 1,
-                      visibility: 'visible'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#dc2626';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#ef4444';
-                    }}
-                  >
-                    <Trash2 style={{ width: '1rem', height: '1rem', opacity: 1 }} />
-                    <span style={{ opacity: 1, visibility: 'visible' }}>Eliminar</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Card de Info Básica */}
-            <div className="bg-white rounded-card shadow-card border border-primary-100 p-6">
-              <h3 className="font-bold text-primary-900 mb-4 flex items-center gap-2">
-                <Stethoscope className="w-5 h-5 text-primary-600" />
-                Información Básica
-              </h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-primary-600 text-sm flex items-center gap-2">
-                    <Cake className="w-4 h-4" />
-                    Edad
-                  </span>
-                  <span className="font-semibold text-primary-900">{calculateAge(pet.birth_date)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-primary-600 text-sm">Género</span>
-                  <span className="font-semibold text-primary-900">{pet.gender}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-primary-600 text-sm flex items-center gap-2">
-                    <Weight className="w-4 h-4" />
-                    Peso
-                  </span>
-                  <span className="font-semibold text-primary-900">{pet.weight ? `${pet.weight} kg` : 'N/A'}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-primary-600 text-sm">Esterilizado</span>
-                  <span className="font-semibold text-primary-900">{pet.is_sterilized ? 'Sí' : 'No'}</span>
-                </div>
-              </div>
-
-              {pet.allergies && (
-                <div className="mt-4 pt-4 border-t border-primary-100">
-                  <p className="text-xs font-semibold text-orange-700 mb-1 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    ALERGIAS / NOTAS
-                  </p>
-                  <p className="text-sm text-orange-800 bg-orange-50 p-2 rounded-lg">{pet.allergies}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Columna Derecha: Tabs */}
-          <div className="lg:col-span-2 space-y-6">
-            
-            {/* Navegación de Tabs */}
-            <div className="bg-white rounded-card shadow-card border border-primary-100 p-2">
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('summary');
-                    reloadAllData();
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem',
-                    padding: '0.75rem 1rem',
-                    borderRadius: '0.5rem',
-                    fontWeight: '500',
-                    transition: 'all 0.2s',
-                    backgroundColor: activeTab === 'summary' ? '#10B981' : 'transparent',
-                    color: activeTab === 'summary' ? '#ffffff' : '#059669',
-                    boxShadow: activeTab === 'summary' ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    opacity: 1,
-                    visibility: 'visible'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (activeTab !== 'summary') {
-                      e.currentTarget.style.backgroundColor = '#F0FDF4';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (activeTab !== 'summary') {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }
-                  }}
-                >
-                  <Heart style={{ width: '1.25rem', height: '1.25rem', opacity: 1 }} />
-                  <span style={{ opacity: 1, visibility: 'visible' }}>Resumen</span>
-                </button>
-                
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('qr')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem',
-                    padding: '0.75rem 1rem',
-                    borderRadius: '0.5rem',
-                    fontWeight: '500',
-                    transition: 'all 0.2s',
-                    backgroundColor: activeTab === 'qr' ? '#10B981' : 'transparent',
-                    color: activeTab === 'qr' ? '#ffffff' : '#059669',
-                    boxShadow: activeTab === 'qr' ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    opacity: 1,
-                    visibility: 'visible'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (activeTab !== 'qr') {
-                      e.currentTarget.style.backgroundColor = '#F0FDF4';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (activeTab !== 'qr') {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }
-                  }}
-                >
-                  <QrCode style={{ width: '1.25rem', height: '1.25rem', opacity: 1 }} />
-                  <span style={{ opacity: 1, visibility: 'visible' }}>Código QR</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('history')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem',
-                    padding: '0.75rem 1rem',
-                    borderRadius: '0.5rem',
-                    fontWeight: '500',
-                    transition: 'all 0.2s',
-                    backgroundColor: activeTab === 'history' ? '#10B981' : 'transparent',
-                    color: activeTab === 'history' ? '#ffffff' : '#059669',
-                    boxShadow: activeTab === 'history' ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    opacity: 1,
-                    visibility: 'visible'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (activeTab !== 'history') {
-                      e.currentTarget.style.backgroundColor = '#F0FDF4';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (activeTab !== 'history') {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }
-                  }}
-                >
-                  <FileText style={{ width: '1.25rem', height: '1.25rem', opacity: 1 }} />
-                  <span style={{ opacity: 1, visibility: 'visible' }}>Historial</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Contenido de Tabs */}
-            <div>
-              {/* TAB: RESUMEN */}
-              {activeTab === 'summary' && (
-                <div className="space-y-6">
-                  
-                  {/* Botón de actualizar */}
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={reloadAllData}
-                      disabled={refreshing}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        backgroundColor: refreshing ? '#D1FAE5' : '#F0FDF4',
-                        color: '#059669',
-                        padding: '0.5rem 1rem',
-                        borderRadius: '0.5rem',
-                        border: '1px solid #A7F3D0',
-                        cursor: refreshing ? 'not-allowed' : 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: '500',
-                        transition: 'all 0.2s',
-                        opacity: 1,
-                        visibility: 'visible'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!refreshing) {
-                          e.currentTarget.style.backgroundColor = '#DCFCE7';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!refreshing) {
-                          e.currentTarget.style.backgroundColor = '#F0FDF4';
-                        }
-                      }}
-                    >
-                      <RefreshCw style={{ width: '1rem', height: '1rem', opacity: 1 }} className={refreshing ? 'animate-spin' : ''} />
-                      <span style={{ opacity: 1, visibility: 'visible' }}>
-                        {refreshing ? 'Actualizando...' : 'Actualizar datos'}
-                      </span>
-                    </button>
-                  </div>
-
-                  {/* Grid de Estadísticas */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    
-                    {/* Card: Última Consulta */}
-                    <div className="bg-white p-5 rounded-card shadow-card border border-primary-100">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Calendar className="w-5 h-5 text-primary-600" />
-                        <p className="text-xs font-semibold text-primary-600">ÚLTIMA CONSULTA</p>
-                      </div>
-                      <p className="text-2xl font-bold text-primary-900">
-                        {medicalStats.lastVisit ? formatDate(medicalStats.lastVisit) : 'Sin registro'}
-                      </p>
-                    </div>
-
-                    {/* Card: Total Consultas */}
-                    <div className="bg-white p-5 rounded-card shadow-card border border-orange-100">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Activity className="w-5 h-5 text-orange-600" />
-                        <p className="text-xs font-semibold text-orange-600">CONSULTAS</p>
-                      </div>
-                      <p className="text-2xl font-bold text-orange-900">{medicalStats.totalRecords}</p>
-                    </div>
-
-                    {/* Card: Peso */}
-                    <div className="bg-white p-5 rounded-card shadow-card border border-purple-100">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Weight className="w-5 h-5 text-purple-600" />
-                        <p className="text-xs font-semibold text-purple-600">PESO ACTUAL</p>
-                      </div>
-                      <p className="text-2xl font-bold text-purple-900">{pet.weight ? `${pet.weight} kg` : 'N/A'}</p>
-                    </div>
-
-                    {/* Card: Edad */}
-                    <div className="bg-white p-5 rounded-card shadow-card border border-blue-100">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Cake className="w-5 h-5 text-blue-600" />
-                        <p className="text-xs font-semibold text-blue-600">EDAD</p>
-                      </div>
-                      <p className="text-lg font-bold text-blue-900">{calculateAge(pet.birth_date)}</p>
-                    </div>
-                  </div>
-
-                  {/* ✅ PREDICCIÓN DE PESO */}
-                  <WeightPrediction petId={id} />
-
-                  {/* ✅ ANÁLISIS DE RIESGO */}
-                  <HealthRiskCalculator pet={pet} />
-
-                  {/* Alerta de Alergias */}
-                  {pet.allergies && (
-                    <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-lg">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className="w-6 h-6 text-orange-600 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <h4 className="font-bold text-orange-900 mb-1">⚠️ Alergias / Condiciones Médicas</h4>
-                          <p className="text-orange-800">{pet.allergies}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Info Card */}
-                  <div className="bg-white rounded-card shadow-card border border-primary-100 p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <TrendingUp className="w-6 h-6 text-primary-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-primary-900 mb-2">Dashboard de {pet.name}</h3>
-                        <p className="text-primary-600 mb-4">
-                          Aquí puedes ver un resumen rápido del estado de salud de {pet.name}. 
-                          Para registrar una nueva consulta, genera un código QR y muéstralo al veterinario.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('qr')}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            backgroundColor: '#10B981',
-                            color: '#ffffff',
-                            padding: '0.625rem 1.25rem',
-                            borderRadius: '0.75rem',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontWeight: '500',
-                            transition: 'all 0.2s',
-                            opacity: 1,
-                            visibility: 'visible'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#059669';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#10B981';
-                          }}
-                        >
-                          <QrCode style={{ width: '1.25rem', height: '1.25rem', opacity: 1 }} />
-                          <span style={{ opacity: 1, visibility: 'visible' }}>Generar Código QR</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB: CÓDIGO QR */}
-              {activeTab === 'qr' && (
-                <QRGenerator petId={id} petName={pet.name} />
-              )}
-
-              {/* TAB: HISTORIAL */}
-              {activeTab === 'history' && (
-                <MedicalHistory petId={id} />
-              )}
+        {/* Header Desktop */}
+        <div className="hidden lg:block bg-white border-b border-gray-100">
+          <div className="px-8 py-5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-gray-900" strokeWidth={2} />
+              <span className="text-sm font-medium text-gray-900">Cuenca, Ecuador</span>
             </div>
           </div>
         </div>
+
+        <main className="px-4 lg:px-8 py-8">
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+            
+            {/* Columna Izquierda: Info de la Mascota */}
+            <div className="lg:col-span-1 space-y-4">
+              
+              {/* Card de Imagen */}
+              <div className="bg-white rounded-3xl overflow-hidden shadow-xl border border-gray-100">
+                <div className="relative aspect-square bg-gradient-to-br from-gray-100 to-gray-50">
+                  <img 
+                    src={pet.photo_url || getDefaultImage(pet.type || pet.species)} 
+                    alt={pet.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.src = getDefaultImage(pet.type || pet.species);
+                    }}
+                  />
+                  <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-semibold text-blue-700 border border-blue-200 shadow-md">
+                    {pet.type || pet.species}
+                  </div>
+                </div>
+                
+                <div className="p-6">
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">{pet.name}</h1>
+                  <p className="text-gray-600 text-lg mb-4">{pet.breed || 'Raza mixta'}</p>
+                  
+                  <div className="flex gap-2">
+                    <button 
+                      type="button"
+                      onClick={() => navigate(`/pets/${id}/edit`)}
+                      className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-medium transition-all"
+                    >
+                      <Edit className="w-4 h-4" strokeWidth={2} />
+                      Editar
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={handleDelete}
+                      className="flex-1 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl font-medium transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" strokeWidth={2} />
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card de Info Básica */}
+              <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6">
+                <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Stethoscope className="w-5 h-5 text-blue-600" strokeWidth={2} />
+                  Información Básica
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600 text-sm flex items-center gap-2">
+                      <Cake className="w-4 h-4" />
+                      Edad
+                    </span>
+                    <span className="font-semibold text-gray-900">{calculateAge(pet.birth_date)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600 text-sm">Género</span>
+                    <span className="font-semibold text-gray-900">{pet.gender}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600 text-sm flex items-center gap-2">
+                      <Weight className="w-4 h-4" />
+                      Peso
+                    </span>
+                    <span className="font-semibold text-gray-900">{pet.weight ? `${pet.weight} kg` : 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600 text-sm">Esterilizado</span>
+                    <span className="font-semibold text-gray-900">{pet.is_sterilized ? 'Sí' : 'No'}</span>
+                  </div>
+                </div>
+
+                {pet.allergies && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <p className="text-xs font-semibold text-orange-700 mb-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      ALERGIAS / NOTAS
+                    </p>
+                    <p className="text-sm text-orange-800 bg-orange-50 p-2 rounded-lg">{pet.allergies}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Columna Derecha: Tabs */}
+            <div className="lg:col-span-2 space-y-6">
+              
+              {/* Navegación de Tabs */}
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-2">
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('summary');
+                      reloadAllData();
+                    }}
+                    className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-medium transition-all ${
+                      activeTab === 'summary'
+                        ? 'bg-blue-600 text-white shadow-lg'
+                        : 'text-blue-600 hover:bg-blue-50'
+                    }`}
+                  >
+                    <Heart className="w-5 h-5" strokeWidth={2} />
+                    <span>Resumen</span>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('qr')}
+                    className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-medium transition-all ${
+                      activeTab === 'qr'
+                        ? 'bg-blue-600 text-white shadow-lg'
+                        : 'text-blue-600 hover:bg-blue-50'
+                    }`}
+                  >
+                    <QrCode className="w-5 h-5" strokeWidth={2} />
+                    <span>Código QR</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('history')}
+                    className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-medium transition-all ${
+                      activeTab === 'history'
+                        ? 'bg-blue-600 text-white shadow-lg'
+                        : 'text-blue-600 hover:bg-blue-50'
+                    }`}
+                  >
+                    <FileText className="w-5 h-5" strokeWidth={2} />
+                    <span>Historial</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Contenido de Tabs */}
+              <div>
+                {/* TAB: RESUMEN */}
+                {activeTab === 'summary' && (
+                  <div className="space-y-6">
+                    
+                    {/* Botón de actualizar */}
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={reloadAllData}
+                        disabled={refreshing}
+                        className="inline-flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-2 rounded-xl border border-blue-200 font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} strokeWidth={2} />
+                        {refreshing ? 'Actualizando...' : 'Actualizar datos'}
+                      </button>
+                    </div>
+
+                    {/* Grid de Estadísticas */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                      
+                      <div className="bg-white p-5 rounded-2xl shadow-xl border border-gray-100">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Calendar className="w-5 h-5 text-blue-600" strokeWidth={2} />
+                          <p className="text-xs font-semibold text-blue-600 uppercase">Última Consulta</p>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {medicalStats.lastVisit ? formatDate(medicalStats.lastVisit) : 'Sin registro'}
+                        </p>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-2xl shadow-xl border border-orange-100">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Activity className="w-5 h-5 text-orange-600" strokeWidth={2} />
+                          <p className="text-xs font-semibold text-orange-600 uppercase">Consultas</p>
+                        </div>
+                        <p className="text-2xl font-bold text-orange-900">{medicalStats.totalRecords}</p>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-2xl shadow-xl border border-purple-100">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Weight className="w-5 h-5 text-purple-600" strokeWidth={2} />
+                          <p className="text-xs font-semibold text-purple-600 uppercase">Peso Actual</p>
+                        </div>
+                        <p className="text-2xl font-bold text-purple-900">{pet.weight ? `${pet.weight} kg` : 'N/A'}</p>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-2xl shadow-xl border border-cyan-100">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Cake className="w-5 h-5 text-cyan-600" strokeWidth={2} />
+                          <p className="text-xs font-semibold text-cyan-600 uppercase">Edad</p>
+                        </div>
+                        <p className="text-lg font-bold text-cyan-900">{calculateAge(pet.birth_date)}</p>
+                      </div>
+                    </div>
+
+                    {/* PREDICCIÓN DE PESO */}
+                    <WeightPrediction petId={id} />
+
+                    {/* ANÁLISIS DE RIESGO */}
+                    <HealthRiskCalculator pet={pet} />
+
+                    {/* Alerta de Alergias */}
+                    {pet.allergies && (
+                      <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-xl">
+                        <div className="flex items-start gap-3">
+                          <AlertCircle className="w-6 h-6 text-orange-600 flex-shrink-0 mt-0.5" strokeWidth={2} />
+                          <div>
+                            <h4 className="font-bold text-orange-900 mb-1">⚠️ Alergias / Condiciones Médicas</h4>
+                            <p className="text-orange-800">{pet.allergies}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Info Card */}
+                    <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <TrendingUp className="w-6 h-6 text-blue-600" strokeWidth={2} />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-gray-900 mb-2">Dashboard de {pet.name}</h3>
+                          <p className="text-gray-600 mb-4">
+                            Aquí puedes ver un resumen rápido del estado de salud de {pet.name}. 
+                            Para registrar una nueva consulta, genera un código QR y muéstralo al veterinario.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('qr')}
+                            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-medium transition-all"
+                          >
+                            <QrCode className="w-5 h-5" strokeWidth={2} />
+                            Generar Código QR
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB: CÓDIGO QR */}
+                {activeTab === 'qr' && (
+                  <QRGenerator petId={id} petName={pet.name} />
+                )}
+
+                {/* TAB: HISTORIAL */}
+                {activeTab === 'history' && (
+                  <MedicalHistory petId={id} />
+                )}
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   );

@@ -1,3 +1,21 @@
+// ============================================
+// REGISTER.JSX
+// ============================================
+// Página de registro de nuevos usuarios
+// Formulario completo con dos secciones:
+//   1. DATOS DE ACCESO: nombre, email, contraseña (+ confirmación)
+//   2. INFORMACIÓN DE CONTACTO: teléfono, dirección, ciudad, país (opcionales)
+// Validaciones:
+//   - Contraseñas deben coincidir
+//   - Contraseña mínimo 6 caracteres
+//   - Email y nombre son obligatorios
+// Al registrarse exitosamente:
+//   - Recibe token JWT del servidor
+//   - Guarda token en localStorage
+//   - Redirige automáticamente a /home
+// Link para ir a login si ya tiene cuenta
+// ============================================
+
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';

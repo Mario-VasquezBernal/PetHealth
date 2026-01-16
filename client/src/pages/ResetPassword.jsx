@@ -1,3 +1,18 @@
+// ============================================
+// RESETPASSWORD.JSX
+// ============================================
+// Página para restablecer contraseña olvidada
+// Se accede mediante link con token enviado por email
+// Formulario con dos campos: nueva contraseña y confirmación
+// Validaciones:
+//   - Token debe existir en URL (query param)
+//   - Contraseñas deben coincidir
+//   - Contraseña mínimo 6 caracteres
+// Si el token no existe o es inválido, muestra mensaje de error
+// Al actualizar exitosamente, redirige a login después de 2 segundos
+// Link para volver al inicio
+// ============================================
+
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
