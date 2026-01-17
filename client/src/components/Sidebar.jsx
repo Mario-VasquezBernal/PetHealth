@@ -18,7 +18,6 @@ import {
   Heart,
   MapPin,
   Home as HomeIcon,
-  FileText,
   User,
   LogOut,
   Building2,
@@ -40,11 +39,10 @@ const Sidebar = ({
     toast.info('Sesión cerrada');
   };
 
-  // ✅ TODOS LOS ITEMS JUNTOS (mismo nivel)
+  // ✅ SIN HISTORIAL
   const menuItems = [
     { icon: HomeIcon, label: 'Inicio', path: '/home' },
     { icon: Calendar, label: 'Citas', path: '/appointments' },
-    { icon: FileText, label: 'Historial', path: '/medical-records' },
     { icon: Building2, label: 'Clínicas', path: '/manage-clinics' },
     { icon: Stethoscope, label: 'Veterinarios', path: '/manage-veterinarians' },
   ];
