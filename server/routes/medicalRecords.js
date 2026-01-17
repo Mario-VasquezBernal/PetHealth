@@ -1,3 +1,6 @@
+// ============================================
+// routes/medical-records.js - ACTUALIZADO
+// ============================================
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
@@ -9,18 +12,29 @@ const authorization = require('../middleware/authorization');
 router.post('/create', async (req, res) => {
     const { 
         token,
-        petId,
         diagnosis,
         treatment,
         notes,
-        next_visit,
-        measured_weight // ✅ AGREGAR ESTE CAMPO
+        measured_weight,
+        // ✅ NUEVOS CAMPOS
+        vet_id,
+        clinic_id,
+        visit_reason,
+        examination_findings,
+        follow_up_date,
+        visit_type
     } = req.body;
 
     try {
-        console.log('📝 Recibiendo registro médico:', { token, petId, diagnosis, measured_weight }); // ✅ Agregar peso al log
+        console.log('📝 Creando registro médico:', { 
+            token: token?.substring(0, 10) + '...', 
+            diagnosis, 
+            measured_weight,
+            vet_id,
+            clinic_id 
+        });
 
-        // ✅ Validar que el token QR es válido
+        // ✅ Validar token QR
         const qrToken = await pool.query(
             'SELECT * FROM qr_tokens WHERE token = $1 AND expires_at > NOW()',
             [token]
@@ -31,51 +45,66 @@ router.post('/create', async (req, res) => {
             return res.status(403).json({ error: 'Token QR inválido o expirado' });
         }
 
-        console.log('✅ Token válido');
+        const petId = qrToken.rows[0].pet_id;
+        console.log('✅ Token válido para mascota ID:', petId);
 
-        // ✅ Verificar que el petId coincide con el token
-        if (qrToken.rows[0].pet_id !== petId) {
-            console.error('❌ Token no corresponde a esta mascota');
-            return res.status(403).json({ error: 'Token no corresponde a esta mascota' });
+        // ✅ Obtener coordenadas de la clínica si existe
+        let location_lat = null;
+        let location_lng = null;
+        
+        if (clinic_id) {
+            const clinicData = await pool.query(
+                'SELECT latitude, longitude FROM clinics WHERE id = $1',
+                [clinic_id]
+            );
+            
+            if (clinicData.rows.length > 0) {
+                location_lat = clinicData.rows[0].latitude;
+                location_lng = clinicData.rows[0].longitude;
+                console.log('📍 Coordenadas de clínica obtenidas:', { location_lat, location_lng });
+            }
         }
 
-        console.log('✅ Pet ID coincide');
-
-        // ✅ Crear registro médico CON EL CAMPO measured_weight
+        // ✅ Crear registro médico CON TODOS LOS CAMPOS
         const recordResult = await pool.query(
             `INSERT INTO medical_records 
-             (pet_id, diagnosis, notes, reason, measured_weight)
-             VALUES ($1, $2, $3, $4, $5)
+             (pet_id, diagnosis, notes, reason, measured_weight, visit_date,
+              vet_id, clinic_id, visit_reason, examination_findings, 
+              follow_up_date, location_lat, location_lng, visit_type)
+             VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9, $10, $11, $12, $13)
              RETURNING *`,
             [
                 petId, 
                 diagnosis, 
                 notes || null,
                 treatment || null,
-                measured_weight ? parseFloat(measured_weight) : null // ✅ AGREGAR PESO
+                measured_weight ? parseFloat(measured_weight) : null,
+                vet_id || null,
+                clinic_id || null,
+                visit_reason || null,
+                examination_findings || null,
+                follow_up_date || null,
+                location_lat,
+                location_lng,
+                visit_type || 'rutina'
             ]
         );
 
         const record = recordResult.rows[0];
-        console.log('✅ Registro médico creado:', record.id);
+        console.log('✅ Registro médico creado con ID:', record.id);
 
-        // ✅✅ ACTUALIZAR EL PESO DE LA MASCOTA
+        // ✅ Actualizar peso de la mascota
         if (measured_weight && parseFloat(measured_weight) > 0) {
             console.log('🔄 Actualizando peso de la mascota a:', measured_weight, 'kg');
             
             const updateResult = await pool.query(
-                'UPDATE pets SET weight = $1 WHERE id = $2 RETURNING *',
+                'UPDATE pets SET weight = $1 WHERE id = $2 RETURNING weight',
                 [parseFloat(measured_weight), petId]
             );
             
             if (updateResult.rows.length > 0) {
-                console.log('✅✅ Peso actualizado exitosamente en la tabla pets');
-                console.log('✅ Nuevo peso:', updateResult.rows[0].weight);
-            } else {
-                console.error('❌ No se encontró la mascota para actualizar');
+                console.log('✅ Peso actualizado en tabla pets:', updateResult.rows[0].weight, 'kg');
             }
-        } else {
-            console.log('⚠️ No se proporcionó peso o es 0');
         }
 
         res.status(201).json({
@@ -108,14 +137,18 @@ router.get('/pet/:petId', authorization, async (req, res) => {
             return res.status(403).json({ error: 'No autorizado' });
         }
 
-        // Obtener registros médicos
+        // ✅ Obtener registros médicos CON JOINS
         const records = await pool.query(
             `SELECT 
                 mr.*,
                 v.name as vet_name,
-                c.name as clinic_name
+                v.specialty as vet_specialty,
+                c.name as clinic_name,
+                c.address as clinic_address,
+                c.city as clinic_city,
+                c.phone as clinic_phone
              FROM medical_records mr
-             LEFT JOIN veterinarians v ON mr.vet_id = v.id
+             LEFT JOIN vets v ON mr.vet_id = v.id
              LEFT JOIN clinics c ON mr.clinic_id = c.id
              WHERE mr.pet_id = $1
              ORDER BY mr.visit_date DESC`,
@@ -128,7 +161,7 @@ router.get('/pet/:petId', authorization, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error obteniendo historial:', error);
+        console.error('❌ Error obteniendo historial:', error.message);
         res.status(500).json({ error: 'Error al obtener historial médico' });
     }
 });
