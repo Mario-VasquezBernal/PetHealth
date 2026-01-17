@@ -1,108 +1,82 @@
-const router = require("express").Router();
-const pool = require("../db");
-const authorization = require("../middleware/authorization");
+const express = require('express');
+const router = express.Router();
+const pool = require('../db');
+const authorization = require('../middleware/authorization');
 
-// 1. OBTENER TODAS LAS CLÍNICAS
-router.get("/", authorization, async (req, res) => {
-  try {
-    const clinics = await pool.query("SELECT id, name, address, phone FROM clinics ORDER BY name ASC");
-    res.json(clinics.rows);
-  } catch (err) {
-    console.error("❌ Error en GET /clinics:", err.message);
-    res.status(500).json({ error: "Error del servidor", details: err.message });
-  }
-});
-
-// 2. CREAR NUEVA CLÍNICA
-router.post("/", authorization, async (req, res) => {
-  try {
-    const { name, address, phone, website } = req.body;
-    const newClinic = await pool.query(
-      "INSERT INTO clinics (name, address, phone, website) VALUES ($1, $2, $3, $4) RETURNING *",
-      [name, address, phone, website || null]
-    );
-    res.json(newClinic.rows[0]);
-  } catch (err) {
-    console.error("❌ Error en POST /clinics:", err.message);
-    res.status(500).json({ error: "Error del servidor", details: err.message });
-  }
-});
-
-// 3. ELIMINAR CLÍNICA
-router.delete("/:id", authorization, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const deleteClinic = await pool.query("DELETE FROM clinics WHERE id = $1", [id]);
-
-    if (deleteClinic.rowCount === 0) {
-        return res.status(404).json({ error: "Clínica no encontrada" });
+// Obtener todas las clínicas
+router.get('/', authorization, async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM clinics ORDER BY name ASC'
+        );
+        res.json({ clinics: result.rows });
+    } catch (error) {
+        console.error('Error obteniendo clínicas:', error);
+        res.status(500).json({ error: 'Error al obtener clínicas' });
     }
-
-    res.json({ message: "Clínica eliminada correctamente" });
-  } catch (err) {
-    console.error("❌ Error en DELETE /clinics:", err.message);
-    res.status(500).json({ error: "Error del servidor", details: err.message });
-  }
 });
 
-// 4. OBTENER TODOS LOS VETERINARIOS
-router.get("/vets", authorization, async (req, res) => {
-  try {
-    const vets = await pool.query(
-      `SELECT v.id, v.name, v.specialty, v.clinic_id, c.name as clinic_name 
-       FROM veterinarians v
-       LEFT JOIN clinics c ON v.clinic_id = c.id
-       ORDER BY v.name ASC`
-    );
-    console.log("✅ GET /clinics/vets - Veterinarios obtenidos:", vets.rows.length);
-    res.json(vets.rows);
-  } catch (err) {
-    console.error("❌ Error en GET /clinics/vets:", err.message);
-    res.status(500).json({ error: "Error del servidor", details: err.message });
-  }
-});
+// Crear clínica
+router.post('/', authorization, async (req, res) => {
+    try {
+        const { name, address, city, phone, latitude, longitude } = req.body;
 
-// 5. CREAR NUEVO VETERINARIO
-router.post("/vets", authorization, async (req, res) => {
-  try {
-    const { name, specialty, clinic_id } = req.body;
-    
-    console.log("📝 POST /clinics/vets - Creando veterinario:", { name, specialty, clinic_id });
-    
-    // ✅ NO convertir a parseInt - clinic_id ya es UUID (string)
-    const newVet = await pool.query(
-      `INSERT INTO veterinarians (name, specialty, clinic_id) 
-       VALUES ($1, $2, $3::uuid) 
-       RETURNING *`,
-      [name, specialty || null, clinic_id || null]
-    );
-    
-    console.log("✅ Veterinario creado exitosamente:", newVet.rows[0]);
-    res.json(newVet.rows[0]);
-  } catch (err) {
-    console.error("❌ Error en POST /clinics/vets:", err.message);
-    res.status(500).json({ error: "Error del servidor", details: err.message });
-  }
-});
+        const result = await pool.query(
+            `INSERT INTO clinics (name, address, city, phone, latitude, longitude)
+             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+            [name, address, city || null, phone || null, latitude || null, longitude || null]
+        );
 
-// 6. ELIMINAR VETERINARIO
-router.delete("/vets/:id", authorization, async (req, res) => {
-  try {
-    const { id } = req.params;
-    console.log("🗑️ DELETE /clinics/vets - Eliminando veterinario ID:", id);
-    
-    const result = await pool.query("DELETE FROM veterinarians WHERE id = $1::uuid RETURNING *", [id]);
-    
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: "Veterinario no encontrado" });
+        res.status(201).json({ clinic: result.rows[0] });
+    } catch (error) {
+        console.error('Error creando clínica:', error);
+        res.status(500).json({ error: 'Error al crear clínica' });
     }
-    
-    console.log("✅ Veterinario eliminado:", result.rows[0]);
-    res.json({ message: "Veterinario eliminado" });
-  } catch (err) {
-    console.error("❌ Error en DELETE /clinics/vets:", err.message);
-    res.status(500).json({ error: "Error al eliminar veterinario", details: err.message });
-  }
+});
+
+// Actualizar clínica
+router.put('/:id', authorization, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, address, city, phone, latitude, longitude } = req.body;
+
+        const result = await pool.query(
+            `UPDATE clinics 
+             SET name = $1, address = $2, city = $3, phone = $4, latitude = $5, longitude = $6
+             WHERE id = $7 RETURNING *`,
+            [name, address, city, phone, latitude, longitude, id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Clínica no encontrada' });
+        }
+
+        res.json({ clinic: result.rows[0] });
+    } catch (error) {
+        console.error('Error actualizando clínica:', error);
+        res.status(500).json({ error: 'Error al actualizar clínica' });
+    }
+});
+
+// Eliminar clínica
+router.delete('/:id', authorization, async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const result = await pool.query(
+            'DELETE FROM clinics WHERE id = $1 RETURNING *',
+            [id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Clínica no encontrada' });
+        }
+
+        res.json({ message: 'Clínica eliminada exitosamente' });
+    } catch (error) {
+        console.error('Error eliminando clínica:', error);
+        res.status(500).json({ error: 'Error al eliminar clínica' });
+    }
 });
 
 module.exports = router;

@@ -34,6 +34,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import VetQRAccess from './pages/VetQRAccess';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import ManageClinics from './pages/ManageClinics';
+import ManageVeterinarians from './pages/ManageVeterinarians';
 
 // Páginas
 import Home from './pages/Home';
@@ -53,6 +55,8 @@ function App() {
       <ToastContainer position="top-right" autoClose={3000} theme="colored" />
       
       <Routes>
+        <Route path="/manage-clinics" element={<ManageClinics />} />
+        <Route path="/manage-veterinarians" element={<ManageVeterinarians />} /> 
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/qr/:token" element={<VetQRAccess />} />
         <Route element={<MainLayout />}>

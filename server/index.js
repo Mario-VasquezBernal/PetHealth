@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
-const initCronJobs = require('./jobs/cronJobs'); // ✅ AGREGAR ESTA LÍNEA
+const initCronJobs = require('./jobs/cronJobs'); 
+const clinicsRouter = require('./routes/clinics');
+const veterinariansRouter = require('./routes/veterinarians');
 
 const app = express();
 
@@ -63,4 +65,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
     console.log('✅ Sistema de notificaciones activado');
+app.use('/clinics', clinicsRouter);
+app.use('/veterinarians', veterinariansRouter);
 });

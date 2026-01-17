@@ -8,214 +8,210 @@
 // Si no hay mascotas, muestra mensaje de estado vacío
 // Preselecciona la primera mascota automáticamente
 // ============================================
-
 import { useState, useEffect } from 'react';
-import { toast } from 'react-toastify';
-import Sidebar from '../components/Sidebar';
-import MobileHeader from '../components/MobileHeader';
-import { getPets, getUserProfile } from '../dataManager';
-import MedicalHistory from '../components/MedicalHistory';
-import { 
-  FileText, 
-  Dog, 
-  Cat, 
-  Stethoscope,
-  ChevronDown,
-  MapPin
-} from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import axios from 'axios';
 
-const MedicalRecords = () => {
-  const [user, setUser] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [pets, setPets] = useState([]);
-  const [selectedPet, setSelectedPet] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+const CreateMedicalRecord = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const scanData = location.state?.scanData;
+  const petToken = location.state?.petToken;
+
+  const [formData, setFormData] = useState({
+    diagnosis: '',
+    treatment: '',
+    notes: '',
+    measured_weight: '',
+    next_visit_date: '',
+    city: '',
+    vet_id: scanData?.veterinarian?.id || '',
+    clinic_id: scanData?.clinic?.id || ''
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (scanData?.clinic) {
+      setFormData(prev => ({
+        ...prev,
+        vet_id: scanData.veterinarian?.id || '',
+        clinic_id: scanData.clinic?.id || '',
+        city: scanData.clinic?.city || ''
+      }));
+    }
+  }, [scanData]);
 
-  const loadData = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
     try {
-      setLoading(true);
-      const [petsData, userData] = await Promise.all([
-        getPets(),
-        getUserProfile()
-      ]);
+      const API_URL = import.meta.env.VITE_API_URL || 'https://pethealth-production.up.railway.app';
       
-      if (Array.isArray(petsData) && petsData.length > 0) {
-        setPets(petsData);
-        setSelectedPet(petsData[0]);
-      } else {
-        setPets([]);
-      }
-      setUser(userData);
-    } catch (error) {
-      console.error('Error al cargar datos:', error);
-      toast.error('Error al cargar datos');
+      const payload = {
+        token: petToken,
+        diagnosis: formData.diagnosis,
+        treatment: formData.treatment,
+        notes: formData.notes,
+        measured_weight: formData.measured_weight ? parseFloat(formData.measured_weight) : null,
+        next_visit_date: formData.next_visit_date || null,
+        city: formData.city || null,
+        vet_id: formData.vet_id,
+        clinic_id: formData.clinic_id
+      };
+
+      await axios.post(`${API_URL}/medical-records/create`, payload);
+
+      alert('✅ Registro médico creado exitosamente');
+      navigate('/vet-dashboard');
+    } catch (err) {
+      console.error('❌ Error creando registro:', err);
+      setError(err.response?.data?.error || 'Error al crear el registro médico');
     } finally {
       setLoading(false);
     }
   };
 
-  const getSpeciesIcon = (species) => {
-    const speciesLower = species?.toLowerCase() || '';
-    if (speciesLower.includes('perro')) return Dog;
-    if (speciesLower.includes('gato')) return Cat;
-    return Stethoscope;
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      
-      <Sidebar 
-        user={user}
-        sidebarOpen={sidebarOpen}
-        setSidebarOpen={setSidebarOpen}
-        onNewPet={null}
-      />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
+      <div className="max-w-3xl mx-auto">
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-6">
+            📋 Crear Registro Médico
+          </h1>
 
-      <div className="flex-1 lg:ml-72">
-        
-        <MobileHeader 
-          onMenuClick={() => setSidebarOpen(true)}
-          onNewPet={null}
-        />
-
-        {/* Header Desktop */}
-        <div className="hidden lg:block bg-white border-b border-gray-100">
-          <div className="px-8 py-5 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-gray-900" strokeWidth={2} />
-              <span className="text-sm font-medium text-gray-900">Cuenca, Ecuador</span>
+          {scanData && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <p className="text-sm font-semibold text-blue-900 mb-2">
+                ✅ Datos del QR escaneado:
+              </p>
+              <p className="text-sm text-blue-800">
+                🏥 Clínica: {scanData.clinic?.name}
+              </p>
+              <p className="text-sm text-blue-800">
+                👨‍⚕️ Veterinario: {scanData.veterinarian?.name}
+              </p>
             </div>
-          </div>
-        </div>
-
-        <main className="px-4 lg:px-8 py-8 max-w-6xl mx-auto">
-          
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <FileText className="w-6 h-6 text-white" strokeWidth={2} />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Historial Médico</h1>
-                <p className="text-gray-600">Consultas y registros veterinarios</p>
-              </div>
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
-            </div>
-          ) : pets.length === 0 ? (
-            <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center shadow-xl">
-              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FileText className="w-10 h-10 text-gray-400" strokeWidth={2} />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">No hay mascotas registradas</h3>
-              <p className="text-gray-600 mb-6">Agrega una mascota para ver su historial médico</p>
-            </div>
-          ) : (
-            <>
-              {/* Selector de Mascota */}
-              <div className="mb-8">
-                <label className="block text-sm font-semibold text-gray-700 mb-3">
-                  Selecciona una mascota
-                </label>
-                <div className="relative">
-                  <button
-                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="w-full bg-white border-2 border-gray-200 rounded-2xl p-4 flex items-center justify-between hover:border-blue-400 transition-all shadow-md hover:shadow-lg"
-                  >
-                    {selectedPet && (
-                      <div className="flex items-center gap-3">
-                        {selectedPet.photo_url ? (
-                          <img 
-                            src={selectedPet.photo_url} 
-                            alt={selectedPet.name}
-                            className="w-12 h-12 rounded-xl object-cover"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                            {(() => {
-                              const Icon = getSpeciesIcon(selectedPet.species || selectedPet.type);
-                              return <Icon className="w-6 h-6 text-blue-600" strokeWidth={2} />;
-                            })()}
-                          </div>
-                        )}
-                        <div className="text-left">
-                          <p className="font-bold text-gray-900">{selectedPet.name}</p>
-                          <p className="text-sm text-gray-600">
-                            {selectedPet.species || selectedPet.type} • {selectedPet.breed || 'Sin raza'}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    <ChevronDown 
-                      className={`w-5 h-5 text-gray-600 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} 
-                      strokeWidth={2}
-                    />
-                  </button>
-
-                  {/* Dropdown Menu */}
-                  {dropdownOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-2xl shadow-xl z-10 max-h-80 overflow-y-auto">
-                      {pets.map((pet) => {
-                        const Icon = getSpeciesIcon(pet.species || pet.type);
-                        return (
-                          <button
-                            key={pet.id}
-                            onClick={() => {
-                              setSelectedPet(pet);
-                              setDropdownOpen(false);
-                            }}
-                            className={`w-full p-4 flex items-center gap-3 hover:bg-gray-50 transition-colors first:rounded-t-2xl last:rounded-b-2xl ${
-                              selectedPet?.id === pet.id ? 'bg-blue-50' : ''
-                            }`}
-                          >
-                            {pet.photo_url ? (
-                              <img 
-                                src={pet.photo_url} 
-                                alt={pet.name}
-                                className="w-12 h-12 rounded-xl object-cover"
-                              />
-                            ) : (
-                              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                                <Icon className="w-6 h-6 text-blue-600" strokeWidth={2} />
-                              </div>
-                            )}
-                            <div className="text-left flex-1">
-                              <p className="font-bold text-gray-900">{pet.name}</p>
-                              <p className="text-sm text-gray-600">
-                                {pet.species || pet.type} • {pet.breed || 'Sin raza'}
-                              </p>
-                            </div>
-                            {selectedPet?.id === pet.id && (
-                              <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Componente de Historial Médico */}
-              {selectedPet && (
-                <MedicalHistory petId={selectedPet.id} />
-              )}
-            </>
           )}
-        </main>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Diagnóstico */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Diagnóstico *
+              </label>
+              <textarea
+                required
+                value={formData.diagnosis}
+                onChange={(e) => setFormData({...formData, diagnosis: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                rows="3"
+                placeholder="Ingrese el diagnóstico"
+              />
+            </div>
+
+            {/* Tratamiento */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tratamiento *
+              </label>
+              <textarea
+                required
+                value={formData.treatment}
+                onChange={(e) => setFormData({...formData, treatment: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                rows="3"
+                placeholder="Ingrese el tratamiento"
+              />
+            </div>
+
+            {/* Notas */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Notas Adicionales
+              </label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                rows="2"
+                placeholder="Observaciones o notas adicionales"
+              />
+            </div>
+
+            {/* Peso Medido */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Peso Medido (kg)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.measured_weight}
+                onChange={(e) => setFormData({...formData, measured_weight: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Ej: 5.5"
+              />
+            </div>
+
+            {/* Ciudad */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Ciudad
+              </label>
+              <input
+                type="text"
+                value={formData.city}
+                onChange={(e) => setFormData({...formData, city: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Ej: Cuenca"
+              />
+            </div>
+
+            {/* Próxima Visita */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Próxima Visita (Opcional)
+              </label>
+              <input
+                type="date"
+                value={formData.next_visit_date}
+                onChange={(e) => setFormData({...formData, next_visit_date: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Botones */}
+            <div className="flex gap-4 pt-4">
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+              >
+                {loading ? 'Guardando...' : 'Guardar Registro'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
 };
 
-export default MedicalRecords;
+export default CreateMedicalRecord;
