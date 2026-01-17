@@ -43,7 +43,7 @@ import PetDetails from './pages/PetDetails';
 import EditPet from './pages/EditPet';
 import Profile from './pages/Profile';
 import Appointments from './pages/Appointments';
-import VetAccess from './pages/VetAccess';
+
 import MedicalRecords from './pages/MedicalRecords';
 import ResetPassword from './pages/ResetPassword';
 
@@ -62,7 +62,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           
-          <Route path="/vet-access/:token" element={<VetAccess />} />
+          
 
           <Route element={<ProtectedRoute />}>
              <Route path="/home" element={<Home />} />
