@@ -10,8 +10,7 @@ import {
   Clock,
   AlertCircle,
   CheckCircle,
-  Loader,
-  Activity
+  Loader
 } from 'lucide-react';
 
 const VetQRAccess = () => {
@@ -21,8 +20,10 @@ const VetQRAccess = () => {
   const [submitting, setSubmitting] = useState(false);
   const [petData, setPetData] = useState(null);
   const [tokenValid, setTokenValid] = useState(false);
-  const [availableVets, setAvailableVets] = useState([]);
-  const [availableClinics, setAvailableClinics] = useState([]);
+  
+  // ✅ CAMBIO: En lugar de listas, guardamos los datos asignados
+  const [assignedVet, setAssignedVet] = useState(null);
+  const [assignedClinic, setAssignedClinic] = useState(null);
   
   const [formData, setFormData] = useState({
     diagnosis: '',
@@ -46,10 +47,20 @@ const VetQRAccess = () => {
       const data = await validateQRToken(token);
       setPetData(data.pet);
       setTokenValid(true);
-      setAvailableVets(data.availableVets || []);
-      setAvailableClinics(data.availableClinics || []);
-      console.log('✅ Veterinarios:', data.availableVets);
-      console.log('✅ Clínicas:', data.availableClinics);
+      
+      // ✅ CAMBIO: Recibir datos asignados en lugar de listas
+      setAssignedVet(data.assignedVet);
+      setAssignedClinic(data.assignedClinic);
+      
+      // ✅ Pre-llenar el formulario con los IDs asignados
+      setFormData(prev => ({
+        ...prev,
+        vet_id: data.assignedVet?.id || '',
+        clinic_id: data.assignedClinic?.id || ''
+      }));
+      
+      console.log('✅ Veterinario asignado:', data.assignedVet);
+      console.log('✅ Clínica asignada:', data.assignedClinic);
       toast.success('Código QR válido');
     } catch (error) {
       setTokenValid(false);
@@ -65,10 +76,6 @@ const VetQRAccess = () => {
     if (!formData.diagnosis || !formData.treatment) {
       return toast.warning('Completa diagnóstico y tratamiento');
     }
-    
-    if (!formData.vet_id && !formData.clinic_id) {
-      return toast.warning('Selecciona al menos el doctor o la clínica');
-    }
 
     try {
       setSubmitting(true);
@@ -76,8 +83,6 @@ const VetQRAccess = () => {
       await createMedicalRecord({
         token,
         ...formData,
-        vet_id: formData.vet_id ? parseInt(formData.vet_id) : null,
-        clinic_id: formData.clinic_id ? parseInt(formData.clinic_id) : null,
         measured_weight: formData.measured_weight ? parseFloat(formData.measured_weight) : null
       });
       
@@ -88,8 +93,8 @@ const VetQRAccess = () => {
         treatment: '',
         notes: '',
         measured_weight: '',
-        vet_id: '',
-        clinic_id: '',
+        vet_id: assignedVet?.id || '',
+        clinic_id: assignedClinic?.id || '',
         visit_reason: '',
         examination_findings: '',
         follow_up_date: '',
@@ -149,7 +154,7 @@ const VetQRAccess = () => {
             <div>
               <p className="text-sm text-gray-600 font-semibold mb-1">MASCOTA</p>
               <p className="font-bold text-gray-900 text-lg">{petData.name}</p>
-              <p className="text-gray-600 text-sm">{petData.type} - {petData.breed || 'Mixto'}</p>
+              <p className="text-gray-600 text-sm">{petData.species} - {petData.breed || 'Mixto'}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600 font-semibold mb-1">PROPIETARIO</p>
@@ -174,45 +179,32 @@ const VetQRAccess = () => {
 
           <div className="space-y-6">
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
+            {/* ✅ CAMBIO: Mostrar info asignada (read-only) en lugar de selects */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-green-50 rounded-xl border-2 border-green-200">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                  <User className="w-4 h-4 text-blue-600" />
-                  Doctor que Atendió *
+                <label className="block text-sm font-semibold text-green-800 mb-2 flex items-center gap-2">
+                  <User className="w-4 h-4 text-green-600" />
+                  Doctor Asignado
                 </label>
-                <select
-                  required
-                  value={formData.vet_id}
-                  onChange={(e) => setFormData({...formData, vet_id: e.target.value})}
-                  className="w-full border-2 border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                >
-                  <option value="">Seleccionar doctor...</option>
-                  {availableVets.map(vet => (
-                    <option key={vet.id} value={vet.id}>
-                      {vet.name} - {vet.specialty}
-                    </option>
-                  ))}
-                </select>
+                <div className="bg-white border-2 border-green-300 p-3 rounded-xl">
+                  <p className="font-bold text-gray-900">{assignedVet?.name || 'No asignado'}</p>
+                  {assignedVet?.specialty && (
+                    <p className="text-sm text-gray-600">{assignedVet.specialty}</p>
+                  )}
+                </div>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-blue-600" />
-                  Clínica donde fue Atendido *
+                <label className="block text-sm font-semibold text-green-800 mb-2 flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-green-600" />
+                  Clínica Asignada
                 </label>
-                <select
-                  required
-                  value={formData.clinic_id}
-                  onChange={(e) => setFormData({...formData, clinic_id: e.target.value})}
-                  className="w-full border-2 border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                >
-                  <option value="">Seleccionar clínica...</option>
-                  {availableClinics.map(clinic => (
-                    <option key={clinic.id} value={clinic.id}>
-                      {clinic.name} {clinic.city ? `- ${clinic.city}` : ''}
-                    </option>
-                  ))}
-                </select>
+                <div className="bg-white border-2 border-green-300 p-3 rounded-xl">
+                  <p className="font-bold text-gray-900">{assignedClinic?.name || 'No asignada'}</p>
+                  {assignedClinic?.address && (
+                    <p className="text-sm text-gray-600">{assignedClinic.address}</p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -263,9 +255,10 @@ const VetQRAccess = () => {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Tratamiento
+                Tratamiento *
               </label>
               <textarea
+                required
                 rows="3"
                 placeholder="Medicamentos, procedimientos, etc."
                 value={formData.treatment}

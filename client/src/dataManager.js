@@ -46,7 +46,7 @@
 //    - deleteTask: Elimina tarea
 //
 // 7. SISTEMA QR Y REGISTROS MÉDICOS
-//    - generateQRCode: Genera token QR temporal para mascota (24h)
+//    - generateQRCode: Genera token QR temporal para mascota (24h) - ✅ ACTUALIZADO
 //    - validateQRToken: Valida token QR (público, sin auth)
 //    - createMedicalRecord: Crea registro médico (público con token)
 //    - getMedicalRecords: Obtiene historial médico de mascota
@@ -62,10 +62,13 @@
 // ============================================
 
 
+
 const API_URL = import.meta.env.VITE_API_URL || 'https://pethealth-production.up.railway.app';
+
 
 //const API_URL = 'http://localhost:5000';
 //const API_URL = 'http://10.0.2.2:5000';
+
 
 // ========================================
 // AUTENTICACIÓN
@@ -85,6 +88,7 @@ export const registerUser = async (userData) => {
   return response.json();
 };
 
+
 export const loginUser = async (credentials) => {
   const response = await fetch(`${API_URL}/auth/login`, {
     method: 'POST',
@@ -100,6 +104,7 @@ export const loginUser = async (credentials) => {
   return response.json();
 };
 
+
 export const getUserProfile = async () => {
   const token = localStorage.getItem('token');
   const response = await fetch(`${API_URL}/auth/profile`, {
@@ -109,6 +114,7 @@ export const getUserProfile = async () => {
   if (!response.ok) throw new Error('Error al obtener perfil');
   return response.json();
 };
+
 
 export const updateUserProfile = async (userData) => {
   const token = localStorage.getItem('token');
@@ -129,6 +135,7 @@ export const updateUserProfile = async (userData) => {
   return response.json();
 };
 
+
 // ========================================
 // MASCOTAS
 // ========================================
@@ -141,6 +148,7 @@ export const getPets = async () => {
   if (!response.ok) throw new Error('Error al obtener mascotas');
   return response.json();
 };
+
 
 export const getPetById = async (id, skipCache = false) => {
   const token = localStorage.getItem('token');
@@ -160,6 +168,7 @@ export const getPetById = async (id, skipCache = false) => {
   return response.json();
 };
 
+
 export const addPetToStorage = async (petData) => {
   const token = localStorage.getItem('token');
   const response = await fetch(`${API_URL}/auth/pets`, {
@@ -174,6 +183,7 @@ export const addPetToStorage = async (petData) => {
   if (!response.ok) throw new Error('Error al agregar mascota');
   return response.json();
 };
+
 
 export const updatePet = async (id, petData) => {
   const token = localStorage.getItem('token');
@@ -190,6 +200,7 @@ export const updatePet = async (id, petData) => {
   return response.json();
 };
 
+
 export const deletePetFromStorage = async (id) => {
   const token = localStorage.getItem('token');
   const response = await fetch(`${API_URL}/auth/pets/${id}`, {
@@ -200,6 +211,7 @@ export const deletePetFromStorage = async (id) => {
   if (!response.ok) throw new Error('Error al eliminar mascota');
   return response.json();
 };
+
 
 // ========================================
 // CITAS
@@ -213,6 +225,7 @@ export const getAppointments = async () => {
   if (!response.ok) throw new Error('Error al obtener citas');
   return response.json();
 };
+
 
 export const createAppointment = async (appointmentData) => {
   const token = localStorage.getItem('token');
@@ -229,6 +242,7 @@ export const createAppointment = async (appointmentData) => {
   return response.json();
 };
 
+
 export const updateAppointment = async (id, appointmentData) => {
   const token = localStorage.getItem('token');
   const response = await fetch(`${API_URL}/appointments/${id}`, {
@@ -244,6 +258,7 @@ export const updateAppointment = async (id, appointmentData) => {
   return response.json();
 };
 
+
 export const deleteAppointment = async (id) => {
   const token = localStorage.getItem('token');
   const response = await fetch(`${API_URL}/appointments/${id}`, {
@@ -254,6 +269,7 @@ export const deleteAppointment = async (id) => {
   if (!response.ok) throw new Error('Error al eliminar cita');
   return response.json();
 };
+
 
 // ========================================
 // VETERINARIOS
@@ -267,6 +283,7 @@ export const getVeterinarians = async () => {
   if (!response.ok) throw new Error('Error al obtener veterinarios');
   return response.json();
 };
+
 
 export const createVeterinarian = async (vetData) => {
   const token = localStorage.getItem('token');
@@ -283,6 +300,7 @@ export const createVeterinarian = async (vetData) => {
   return response.json();
 };
 
+
 export const updateVeterinarian = async (id, vetData) => {
   const token = localStorage.getItem('token');
   const response = await fetch(`${API_URL}/vet/${id}`, {
@@ -298,6 +316,7 @@ export const updateVeterinarian = async (id, vetData) => {
   return response.json();
 };
 
+
 export const deleteVeterinarian = async (id) => {
   const token = localStorage.getItem('token');
   const response = await fetch(`${API_URL}/vet/${id}`, {
@@ -308,6 +327,7 @@ export const deleteVeterinarian = async (id) => {
   if (!response.ok) throw new Error('Error al eliminar veterinario');
   return response.json();
 };
+
 
 // ========================================
 // CLÍNICAS
@@ -321,6 +341,7 @@ export const getClinics = async () => {
   if (!response.ok) throw new Error('Error al obtener clínicas');
   return response.json();
 };
+
 
 export const createClinic = async (clinicData) => {
   const token = localStorage.getItem('token');
@@ -337,6 +358,7 @@ export const createClinic = async (clinicData) => {
   return response.json();
 };
 
+
 export const updateClinic = async (id, clinicData) => {
   const token = localStorage.getItem('token');
   const response = await fetch(`${API_URL}/clinics/${id}`, {
@@ -352,6 +374,7 @@ export const updateClinic = async (id, clinicData) => {
   return response.json();
 };
 
+
 export const deleteClinic = async (id) => {
   const token = localStorage.getItem('token');
   const response = await fetch(`${API_URL}/clinics/${id}`, {
@@ -362,6 +385,7 @@ export const deleteClinic = async (id) => {
   if (!response.ok) throw new Error('Error al eliminar clínica');
   return response.json();
 };
+
 
 // ========================================
 // TAREAS
@@ -375,6 +399,7 @@ export const getTasks = async () => {
   if (!response.ok) throw new Error('Error al obtener tareas');
   return response.json();
 };
+
 
 export const createTask = async (taskData) => {
   const token = localStorage.getItem('token');
@@ -391,6 +416,7 @@ export const createTask = async (taskData) => {
   return response.json();
 };
 
+
 export const updateTask = async (id, taskData) => {
   const token = localStorage.getItem('token');
   const response = await fetch(`${API_URL}/tasks/${id}`, {
@@ -406,6 +432,7 @@ export const updateTask = async (id, taskData) => {
   return response.json();
 };
 
+
 export const deleteTask = async (id) => {
   const token = localStorage.getItem('token');
   const response = await fetch(`${API_URL}/tasks/${id}`, {
@@ -417,18 +444,21 @@ export const deleteTask = async (id) => {
   return response.json();
 };
 
+
 // ========================================
 // SISTEMA QR Y REGISTROS MÉDICOS
 // ========================================
 
-export const generateQRCode = async (petId) => {
+// ✅ ACTUALIZADO: Ahora recibe vetId y clinicId
+export const generateQRCode = async (petId, { vetId, clinicId }) => {
   const token = localStorage.getItem('token');
   const response = await fetch(`${API_URL}/qr/generate/${petId}`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
-    }
+    },
+    body: JSON.stringify({ vetId, clinicId }) // ✅ Enviar IDs al backend
   });
   
   if (!response.ok) {
@@ -438,6 +468,7 @@ export const generateQRCode = async (petId) => {
   
   return response.json();
 };
+
 
 export const validateQRToken = async (token) => {
   const response = await fetch(`${API_URL}/qr/validate/${token}`, {
@@ -453,6 +484,7 @@ export const validateQRToken = async (token) => {
   
   return response.json();
 };
+
 
 export const createMedicalRecord = async (recordData) => {
   const response = await fetch(`${API_URL}/medical-records/create`, {
@@ -470,6 +502,7 @@ export const createMedicalRecord = async (recordData) => {
   
   return response.json();
 };
+
 
 export const getMedicalRecords = async (petId) => {
   const token = localStorage.getItem('token');

@@ -8,16 +8,27 @@
 // Timer actualizado cada segundo, marca "⚠️ Expirado" cuando llega a 0
 // QR funciona escaneándolo o compartiendo el vetAccessUrl
 // ============================================
-
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { generateQRCode } from '../dataManager';
-import { QrCode, RefreshCw, Clock, Download, Share2, X } from 'lucide-react';
+import { QrCode, RefreshCw, Clock, Download, Share2, User, Building2 } from 'lucide-react';
 
 const QRGenerator = ({ petId, petName }) => {
   const [qrData, setQrData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadingOptions, setLoadingOptions] = useState(true);
   const [timeRemaining, setTimeRemaining] = useState(null);
+  
+  // ✅ NUEVO: Estados para veterinarios y clínicas
+  const [veterinarians, setVeterinarians] = useState([]);
+  const [clinics, setClinics] = useState([]);
+  const [selectedVet, setSelectedVet] = useState('');
+  const [selectedClinic, setSelectedClinic] = useState('');
+
+  // Cargar opciones al montar el componente
+  useEffect(() => {
+    loadOptions();
+  }, []);
 
   useEffect(() => {
     if (qrData?.expiresAt) {
@@ -40,12 +51,46 @@ const QRGenerator = ({ petId, petName }) => {
     }
   }, [qrData]);
 
+  // ✅ NUEVO: Cargar veterinarios y clínicas
+  const loadOptions = async () => {
+    try {
+      setLoadingOptions(true);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/qr/options`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) throw new Error('Error al cargar opciones');
+
+      const data = await response.json();
+      setVeterinarians(data.veterinarians || []);
+      setClinics(data.clinics || []);
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al cargar veterinarios y clínicas');
+    } finally {
+      setLoadingOptions(false);
+    }
+  };
+
   const handleGenerateQR = async () => {
+    // ✅ VALIDACIÓN: Asegurar que se seleccionen vet y clínica
+    if (!selectedVet || !selectedClinic) {
+      toast.warning('⚠️ Debes seleccionar un veterinario y una clínica');
+      return;
+    }
+
     try {
       setLoading(true);
-      const data = await generateQRCode(petId);
+      // ✅ NUEVO: Enviar vetId y clinicId
+      const data = await generateQRCode(petId, {
+        vetId: selectedVet,
+        clinicId: selectedClinic
+      });
       setQrData(data);
-      toast.success('Código QR generado exitosamente');
+      toast.success('✅ Código QR generado exitosamente');
     } catch (error) {
       console.error(error);
       toast.error(error.message || 'Error al generar código QR');
@@ -71,6 +116,17 @@ const QRGenerator = ({ petId, petName }) => {
     toast.success('Enlace copiado al portapapeles');
   };
 
+  if (loadingOptions) {
+    return (
+      <div className="bg-white rounded-card shadow-card border border-primary-100 p-6">
+        <div className="text-center py-8">
+          <RefreshCw className="w-8 h-8 text-primary-600 animate-spin mx-auto mb-2" />
+          <p className="text-primary-600">Cargando opciones...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-card shadow-card border border-primary-100 p-6">
       <div className="flex items-center justify-between mb-4">
@@ -91,59 +147,93 @@ const QRGenerator = ({ petId, petName }) => {
       </div>
 
       {!qrData ? (
-        <div className="text-center py-8">
-          <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <QrCode className="w-10 h-10 text-primary-600" />
+        <div className="space-y-4">
+          {/* ✅ NUEVO: Selects para Veterinario y Clínica */}
+          <div className="bg-blue-50 p-4 rounded-xl border-2 border-blue-200">
+            <p className="text-sm font-semibold text-blue-900 mb-3">
+              📋 Selecciona el veterinario y clínica que atenderá a {petName}
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-blue-800 mb-2 flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Veterinario *
+                </label>
+                <select
+                  value={selectedVet}
+                  onChange={(e) => setSelectedVet(e.target.value)}
+                  className="w-full border-2 border-blue-300 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                >
+                  <option value="">Seleccionar veterinario...</option>
+                  {veterinarians.map(vet => (
+                    <option key={vet.id} value={vet.id}>
+                      {vet.name} {vet.specialty ? `- ${vet.specialty}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-blue-800 mb-2 flex items-center gap-2">
+                  <Building2 className="w-4 h-4" />
+                  Clínica *
+                </label>
+                <select
+                  value={selectedClinic}
+                  onChange={(e) => setSelectedClinic(e.target.value)}
+                  className="w-full border-2 border-blue-300 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                >
+                  <option value="">Seleccionar clínica...</option>
+                  {clinics.map(clinic => (
+                    <option key={clinic.id} value={clinic.id}>
+                      {clinic.name} {clinic.address ? `- ${clinic.address}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
-          <p className="text-primary-600 mb-4">
-            Genera un código QR para que el veterinario pueda registrar la consulta
-          </p>
-          <button
-            type="button"
-            onClick={handleGenerateQR}
-            disabled={loading}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              backgroundColor: loading ? '#86EFAC' : '#059669',
-              color: '#ffffff',
-              padding: '0.75rem 1.5rem',
-              borderRadius: '0.75rem',
-              border: 'none',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontWeight: '500',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-              transition: 'all 0.2s',
-              opacity: 1,
-              visibility: 'visible'
-            }}
-            onMouseEnter={(e) => {
-              if (!loading) {
-                e.currentTarget.style.backgroundColor = '#047857';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!loading) {
-                e.currentTarget.style.backgroundColor = '#059669';
-              }
-            }}
-          >
-            {loading ? (
-              <>
-                <RefreshCw style={{ width: '1.25rem', height: '1.25rem', opacity: 1 }} className="animate-spin" />
-                <span style={{ opacity: 1, visibility: 'visible' }}>Generando...</span>
-              </>
-            ) : (
-              <>
-                <QrCode style={{ width: '1.25rem', height: '1.25rem', opacity: 1 }} />
-                <span style={{ opacity: 1, visibility: 'visible' }}>Generar Código QR</span>
-              </>
-            )}
-          </button>
+
+          {/* Botón de generar */}
+          <div className="text-center pt-2">
+            <button
+              type="button"
+              onClick={handleGenerateQR}
+              disabled={loading}
+              className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white px-6 py-3 rounded-xl font-medium shadow-lg transition-all disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <>
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  Generando...
+                </>
+              ) : (
+                <>
+                  <QrCode className="w-5 h-5" />
+                  Generar Código QR
+                </>
+              )}
+            </button>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
+          {/* ✅ NUEVO: Mostrar doctor y clínica asignados */}
+          <div className="bg-green-50 p-4 rounded-xl border-2 border-green-200">
+            <p className="text-sm font-semibold text-green-900 mb-2">✅ QR generado para:</p>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-green-700 font-medium">Doctor:</p>
+                <p className="text-green-900 font-bold">{qrData.assignedVet?.name}</p>
+              </div>
+              <div>
+                <p className="text-green-700 font-medium">Clínica:</p>
+                <p className="text-green-900 font-bold">{qrData.assignedClinic?.name}</p>
+              </div>
+            </div>
+          </div>
+
           {/* Imagen QR */}
           <div className="flex justify-center bg-gradient-to-br from-primary-50 to-white p-6 rounded-xl border-2 border-dashed border-primary-200">
             <img 
@@ -160,8 +250,8 @@ const QRGenerator = ({ petId, petName }) => {
             </p>
             <ol className="text-sm text-primary-700 space-y-1 list-decimal list-inside">
               <li>Muestra este código QR al veterinario</li>
-              <li>El veterinario escanea y registra la consulta</li>
-              <li>El código expira en 15 minutos</li>
+              <li>El QR ya contiene la info del doctor y clínica</li>
+              <li>El código expira en 24 horas</li>
             </ol>
           </div>
 
@@ -170,99 +260,32 @@ const QRGenerator = ({ petId, petName }) => {
             <button
               type="button"
               onClick={handleDownloadQR}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem',
-                backgroundColor: '#10B981',
-                color: '#ffffff',
-                padding: '0.625rem 1rem',
-                borderRadius: '0.75rem',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                transition: 'all 0.2s',
-                opacity: 1,
-                visibility: 'visible'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#059669';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#10B981';
-              }}
+              className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all"
             >
-              <Download style={{ width: '1rem', height: '1rem', opacity: 1 }} />
-              <span style={{ opacity: 1, visibility: 'visible' }}>Descargar</span>
+              <Download className="w-4 h-4" />
+              Descargar
             </button>
             
             <button
               type="button"
               onClick={handleCopyLink}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem',
-                backgroundColor: '#f97316',
-                color: '#ffffff',
-                padding: '0.625rem 1rem',
-                borderRadius: '0.75rem',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                transition: 'all 0.2s',
-                opacity: 1,
-                visibility: 'visible'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#ea580c';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#f97316';
-              }}
+              className="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all"
             >
-              <Share2 style={{ width: '1rem', height: '1rem', opacity: 1 }} />
-              <span style={{ opacity: 1, visibility: 'visible' }}>Copiar Link</span>
+              <Share2 className="w-4 h-4" />
+              Copiar Link
             </button>
             
             <button
               type="button"
-              onClick={handleGenerateQR}
-              disabled={loading}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem',
-                backgroundColor: loading ? '#d1d5db' : '#6b7280',
-                color: '#ffffff',
-                padding: '0.625rem 1rem',
-                borderRadius: '0.75rem',
-                border: 'none',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                transition: 'all 0.2s',
-                opacity: 1,
-                visibility: 'visible'
+              onClick={() => {
+                setQrData(null);
+                setSelectedVet('');
+                setSelectedClinic('');
               }}
-              onMouseEnter={(e) => {
-                if (!loading) {
-                  e.currentTarget.style.backgroundColor = '#4b5563';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!loading) {
-                  e.currentTarget.style.backgroundColor = '#6b7280';
-                }
-              }}
+              className="flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all"
             >
-              <RefreshCw style={{ width: '1rem', height: '1rem', opacity: 1 }} className={loading ? 'animate-spin' : ''} />
-              <span style={{ opacity: 1, visibility: 'visible' }}>Renovar</span>
+              <RefreshCw className="w-4 h-4" />
+              Nuevo QR
             </button>
           </div>
         </div>
