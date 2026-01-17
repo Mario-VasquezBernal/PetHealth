@@ -1,0 +1,25 @@
+(Sidebar + MobileHeader): estructura del menú home 
+
+# 1. Asegúrate de estar en develop y que todo esté commiteado
+git checkout develop
+git status
+
+# 2. Si hay cambios sin commitear, hazlo ahora
+git add .
+git commit -m "Update: New QR form fields and functionality"
+
+# 3. Cambia a main
+git checkout main
+
+# 4. Actualiza main con los últimos cambios remotos (por si acaso)
+git pull origin main
+
+# 5. Haz el merge de develop a main
+git merge develop
+
+# 6. Push a main para que Railway despliegue
+git push origin main
+
+-----------------si sale mal -------------
+git revert HEAD
+git push origin main
