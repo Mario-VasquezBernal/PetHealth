@@ -6,7 +6,6 @@ const router = express.Router();
 const pool = require('../db');
 const authorization = require('../middleware/authorization');
 
-
 // ========================================
 // 1️⃣ CREAR registro médico (público con token QR)
 // ========================================
@@ -17,7 +16,8 @@ router.post('/create', async (req, res) => {
         treatment,
         notes,
         measured_weight,
-        // ✅ NUEVOS CAMPOS
+        city,  // ✅ NUEVO CAMPO
+        // ✅ CAMPOS EXISTENTES
         vet_id,
         clinic_id,
         visit_reason,
@@ -26,16 +26,15 @@ router.post('/create', async (req, res) => {
         visit_type
     } = req.body;
 
-
     try {
         console.log('📝 Creando registro médico:', { 
             token: token?.substring(0, 10) + '...', 
             diagnosis, 
             measured_weight,
+            city,  // ✅ AGREGAR AL LOG
             vet_id,
             clinic_id 
         });
-
 
         // ✅ Validar token QR
         const qrToken = await pool.query(
@@ -43,16 +42,13 @@ router.post('/create', async (req, res) => {
             [token]
         );
 
-
         if (qrToken.rows.length === 0) {
             console.error('❌ Token QR inválido o expirado');
             return res.status(403).json({ error: 'Token QR inválido o expirado' });
         }
 
-
         const petId = qrToken.rows[0].pet_id;
         console.log('✅ Token válido para mascota ID:', petId);
-
 
         // ✅ Obtener coordenadas de la clínica si existe
         let location_lat = null;
@@ -71,14 +67,13 @@ router.post('/create', async (req, res) => {
             }
         }
 
-
-        // ✅ Crear registro médico CON TODOS LOS CAMPOS
+        // ✅ Crear registro médico CON TODOS LOS CAMPOS + CITY
         const recordResult = await pool.query(
             `INSERT INTO medical_records 
              (pet_id, diagnosis, notes, reason, measured_weight, visit_date,
-              vet_id, clinic_id, visit_reason, examination_findings, 
+              vet_id, clinic_id, city, visit_reason, examination_findings, 
               follow_up_date, location_lat, location_lng, visit_type)
-             VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9, $10, $11, $12, $13)
+             VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9, $10, $11, $12, $13, $14)
              RETURNING *`,
             [
                 petId, 
@@ -88,6 +83,7 @@ router.post('/create', async (req, res) => {
                 measured_weight ? parseFloat(measured_weight) : null,
                 vet_id || null,
                 clinic_id || null,
+                city || null,  // ✅ AGREGAR CITY
                 visit_reason || null,
                 examination_findings || null,
                 follow_up_date || null,
@@ -97,10 +93,8 @@ router.post('/create', async (req, res) => {
             ]
         );
 
-
         const record = recordResult.rows[0];
         console.log('✅ Registro médico creado con ID:', record.id);
-
 
         // ✅ Actualizar peso de la mascota
         if (measured_weight && parseFloat(measured_weight) > 0) {
@@ -116,20 +110,17 @@ router.post('/create', async (req, res) => {
             }
         }
 
-
         res.status(201).json({
             success: true,
             message: 'Registro médico creado exitosamente',
             record
         });
 
-
     } catch (error) {
         console.error('❌ Error creando registro médico:', error.message);
         res.status(500).json({ error: 'Error al guardar registro médico: ' + error.message });
     }
 });
-
 
 // ========================================
 // 2️⃣ OBTENER historial médico de una mascota
@@ -138,7 +129,6 @@ router.get('/pet/:petId', authorization, async (req, res) => {
     const { petId } = req.params;
     const userId = req.user;
 
-
     try {
         // Verificar propiedad de la mascota
         const petCheck = await pool.query(
@@ -146,13 +136,11 @@ router.get('/pet/:petId', authorization, async (req, res) => {
             [petId, userId]
         );
 
-
         if (petCheck.rows.length === 0) {
             return res.status(403).json({ error: 'No autorizado' });
         }
 
-
-        // ✅ CORREGIDO: Cambiar 'vets' por 'veterinarians'
+        // ✅ Incluir city en el SELECT
         const records = await pool.query(
             `SELECT 
                 mr.*,
@@ -170,18 +158,15 @@ router.get('/pet/:petId', authorization, async (req, res) => {
             [petId]
         );
 
-
         res.json({
             success: true,
             records: records.rows
         });
-
 
     } catch (error) {
         console.error('❌ Error obteniendo historial:', error.message);
         res.status(500).json({ error: 'Error al obtener historial médico' });
     }
 });
-
 
 module.exports = router;
