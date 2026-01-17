@@ -21,7 +21,8 @@ import {
   FileText,
   User,
   LogOut,
-  Menu
+  Building2,
+  Stethoscope
 } from 'lucide-react';
 
 const Sidebar = ({ 
@@ -43,6 +44,12 @@ const Sidebar = ({
     { icon: HomeIcon, label: 'Inicio', path: '/home' },
     { icon: Calendar, label: 'Citas', path: '/appointments' },
     { icon: FileText, label: 'Historial', path: '/medical-records' },
+  ];
+
+  // ✅ NUEVA SECCIÓN: Gestión Administrativa
+  const adminItems = [
+    { icon: Building2, label: 'Gestionar Clínicas', path: '/manage-clinics' },
+    { icon: Stethoscope, label: 'Gestionar Veterinarios', path: '/manage-veterinarians' },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -85,6 +92,7 @@ const Sidebar = ({
 
         {/* Navegación Principal */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          {/* Menú Principal */}
           {menuItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -103,6 +111,31 @@ const Sidebar = ({
               </button>
             );
           })}
+
+          {/* ✅ NUEVA SECCIÓN: Gestión Administrativa */}
+          <div className="pt-4 mt-4 border-t border-gray-200">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider px-4 mb-2">
+              Gestión
+            </p>
+            {adminItems.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.path);
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                    active 
+                      ? 'bg-green-50 text-green-600' 
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" strokeWidth={2} />
+                  <span className="font-medium text-sm">{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </nav>
 
         {/* Botón Nueva Mascota */}
@@ -196,6 +229,7 @@ const Sidebar = ({
             </div>
 
             <nav className="p-4 space-y-1">
+              {/* Menú Principal */}
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.path);
@@ -217,6 +251,34 @@ const Sidebar = ({
                   </button>
                 );
               })}
+
+              {/* ✅ NUEVA SECCIÓN: Gestión Administrativa (MÓVIL) */}
+              <div className="pt-4 mt-4 border-t border-gray-200">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider px-4 mb-2">
+                  Gestión
+                </p>
+                {adminItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = isActive(item.path);
+                  return (
+                    <button
+                      key={item.path}
+                      onClick={() => {
+                        navigate(item.path);
+                        setSidebarOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                        active 
+                          ? 'bg-green-50 text-green-600' 
+                          : 'text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5" strokeWidth={2} />
+                      <span className="font-medium text-sm">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </nav>
 
             {onNewPet && (
