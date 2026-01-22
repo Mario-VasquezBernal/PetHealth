@@ -10,7 +10,7 @@
 // Si ya hay token válido, redirige automáticamente a /home
 // Link a página de registro
 // ============================================
-
+import { APP_CONFIG } from '../constants';
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -91,15 +91,22 @@ const Login = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-sky-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo/Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-3xl mb-4 shadow-xl shadow-blue-600/30">
-            <Heart className="w-10 h-10 text-white" fill="white" strokeWidth={1.5} />
-          </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-2">
-            PetHealth
-          </h1>
-          <p className="text-gray-600 text-lg">Cuida a tus mascotas con amor</p>
-        </div>
+     <div className="text-center mb-8">
+  <div className="flex justify-center mb-4">
+    <img
+      src={APP_CONFIG.LOGO_URL}
+      alt={APP_CONFIG.APP_NAME}
+      className="w-20 h-20 object-contain rounded-xl shadow-lg"
+      onError={(e) => e.target.style.display = 'none'}
+    />
+  </div>
+  <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-2">
+    {APP_CONFIG.APP_NAME}
+  </h1>
+  <p className="text-gray-600 text-lg">Cuida a tus mascotas con amor</p>
+</div>
+
+
 
         {/* Card de Login */}
         <div className="bg-white rounded-3xl shadow-2xl p-8 backdrop-blur-lg border border-gray-100">

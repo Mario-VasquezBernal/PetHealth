@@ -16,7 +16,7 @@ const ManageClinics = () => {
     city: '',
     phone: '',
     latitude: '',
-    longitude: ''
+    longitude: '',
   });
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -26,6 +26,7 @@ const ManageClinics = () => {
   useEffect(() => {
     loadUser();
     fetchClinics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadUser = async () => {
@@ -41,7 +42,7 @@ const ManageClinics = () => {
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API_URL}/clinics`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       setClinics(res.data.clinics || []);
     } catch (error) {
@@ -52,23 +53,30 @@ const ManageClinics = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       const token = localStorage.getItem('token');
-      
+
       if (editingId) {
         await axios.put(`${API_URL}/clinics/${editingId}`, formData, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         });
         alert('✅ Clínica actualizada exitosamente');
       } else {
         await axios.post(`${API_URL}/clinics`, formData, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         });
         alert('✅ Clínica creada exitosamente');
       }
 
-      setFormData({ name: '', address: '', city: '', phone: '', latitude: '', longitude: '' });
+      setFormData({
+        name: '',
+        address: '',
+        city: '',
+        phone: '',
+        latitude: '',
+        longitude: '',
+      });
       setEditingId(null);
       setShowForm(false);
       fetchClinics();
@@ -87,7 +95,7 @@ const ManageClinics = () => {
       city: clinic.city || '',
       phone: clinic.phone || '',
       latitude: clinic.latitude || '',
-      longitude: clinic.longitude || ''
+      longitude: clinic.longitude || '',
     });
     setEditingId(clinic.id);
     setShowForm(true);
@@ -95,11 +103,11 @@ const ManageClinics = () => {
 
   const handleDelete = async (id) => {
     if (!confirm('¿Estás seguro de eliminar esta clínica?')) return;
-    
+
     try {
       const token = localStorage.getItem('token');
       await axios.delete(`${API_URL}/clinics/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       alert('✅ Clínica eliminada exitosamente');
       fetchClinics();
@@ -110,9 +118,8 @@ const ManageClinics = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      
-      <Sidebar 
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-emerald-50 flex">
+      <Sidebar
         user={user}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
@@ -120,28 +127,23 @@ const ManageClinics = () => {
       />
 
       <div className="flex-1 lg:ml-72">
-        
-        <MobileHeader 
-          onMenuClick={() => setSidebarOpen(true)}
-          onNewPet={null}
-        />
+        <MobileHeader onMenuClick={() => setSidebarOpen(true)} onNewPet={null} />
 
         {/* Header Desktop */}
-        <div className="hidden lg:block bg-white border-b border-gray-100">
-          <div className="px-8 py-5 flex items-center justify-between">
+        <div className="hidden lg:block bg-white/80 border-b border-primary-100 backdrop-blur-sm">
+          <div className="px-8 py-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-gray-900" strokeWidth={2} />
-              <span className="text-sm font-medium text-gray-900">Cuenca, Ecuador</span>
+              <MapPin className="w-5 h-5 text-primary-700" strokeWidth={2} />
+              <span className="text-sm font-medium text-primary-800">Cuenca, Ecuador</span>
             </div>
           </div>
         </div>
 
         <main className="px-4 lg:px-8 py-8">
-          
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-400/40">
                 <Building2 className="w-6 h-6 text-white" strokeWidth={2} />
               </div>
               <div className="flex-1">
@@ -152,9 +154,16 @@ const ManageClinics = () => {
                 onClick={() => {
                   setShowForm(!showForm);
                   setEditingId(null);
-                  setFormData({ name: '', address: '', city: '', phone: '', latitude: '', longitude: '' });
+                  setFormData({
+                    name: '',
+                    address: '',
+                    city: '',
+                    phone: '',
+                    latitude: '',
+                    longitude: '',
+                  });
                 }}
-                className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 font-medium shadow-lg hidden lg:block"
+                className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-2xl hover:from-emerald-600 hover:to-emerald-700 font-medium shadow-lg shadow-emerald-400/40 hidden lg:block transition-all hover:-translate-y-0.5"
               >
                 {showForm ? '❌ Cancelar' : '➕ Nueva Clínica'}
               </button>
@@ -162,10 +171,9 @@ const ManageClinics = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
             {/* COLUMNA 1: FORMULARIO */}
             {showForm && (
-              <div className="bg-white p-6 rounded-3xl shadow-xl border border-gray-100 h-fit">
+              <div className="bg-white/95 p-6 rounded-3xl shadow-xl shadow-emerald-100 border border-emerald-100 h-fit">
                 <h2 className="text-xl font-bold mb-4 text-gray-900">
                   {editingId ? '✏️ Editar Clínica' : '➕ Nueva Clínica'}
                 </h2>
@@ -178,8 +186,13 @@ const ManageClinics = () => {
                       type="text"
                       required
                       value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          name: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2.5 border border-emerald-100 rounded-2xl bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-400 outline-none shadow-sm"
                       placeholder="Ej: Clínica Veterinaria El Bosque"
                     />
                   </div>
@@ -192,8 +205,13 @@ const ManageClinics = () => {
                       type="text"
                       required
                       value={formData.city}
-                      onChange={(e) => setFormData({...formData, city: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          city: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2.5 border border-emerald-100 rounded-2xl bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-400 outline-none shadow-sm"
                       placeholder="Ej: Cuenca"
                     />
                   </div>
@@ -206,8 +224,13 @@ const ManageClinics = () => {
                       type="text"
                       required
                       value={formData.address}
-                      onChange={(e) => setFormData({...formData, address: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          address: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2.5 border border-emerald-100 rounded-2xl bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-400 outline-none shadow-sm"
                       placeholder="Ej: Av. González Suárez 123"
                     />
                   </div>
@@ -219,8 +242,13 @@ const ManageClinics = () => {
                     <input
                       type="tel"
                       value={formData.phone}
-                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          phone: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2.5 border border-emerald-100 rounded-2xl bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-400 outline-none shadow-sm"
                       placeholder="Ej: 07-1234567"
                     />
                   </div>
@@ -234,8 +262,13 @@ const ManageClinics = () => {
                         type="number"
                         step="0.000001"
                         value={formData.latitude}
-                        onChange={(e) => setFormData({...formData, latitude: e.target.value})}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            latitude: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-2.5 border border-emerald-100 rounded-2xl bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-400 outline-none shadow-sm"
                         placeholder="-2.9001"
                       />
                     </div>
@@ -248,8 +281,13 @@ const ManageClinics = () => {
                         type="number"
                         step="0.000001"
                         value={formData.longitude}
-                        onChange={(e) => setFormData({...formData, longitude: e.target.value})}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            longitude: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-2.5 border border-emerald-100 rounded-2xl bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-400 outline-none shadow-sm"
                         placeholder="-79.0059"
                       />
                     </div>
@@ -258,36 +296,48 @@ const ManageClinics = () => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full px-6 py-3.5 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold shadow-lg disabled:bg-gray-400 transition-all"
+                    className="w-full px-6 py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-2xl font-bold shadow-lg shadow-emerald-400/50 disabled:bg-gray-400 disabled:shadow-none transition-all hover:-translate-y-0.5"
                   >
-                    {loading ? 'Guardando...' : editingId ? '💾 Actualizar Clínica' : '➕ Crear Clínica'}
+                    {loading
+                      ? 'Guardando...'
+                      : editingId
+                      ? '💾 Actualizar Clínica'
+                      : '➕ Crear Clínica'}
                   </button>
                 </form>
               </div>
             )}
 
             {/* COLUMNA 2: LISTA DE CLÍNICAS */}
-            <div className={showForm ? "lg:col-span-2" : "lg:col-span-3"}>
+            <div className={showForm ? 'lg:col-span-2' : 'lg:col-span-3'}>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {clinics.map((clinic) => (
-                  <div key={clinic.id} className="bg-white rounded-2xl shadow-lg p-5 hover:shadow-xl transition-all border border-gray-100">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">{clinic.name}</h3>
+                  <div
+                    key={clinic.id}
+                    className="bg-white/95 rounded-3xl shadow-md shadow-primary-100/80 p-5 hover:shadow-xl hover:-translate-y-0.5 transition-all border border-primary-100/70"
+                  >
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <span className="inline-flex w-8 h-8 rounded-2xl bg-primary-100 items-center justify-center text-primary-700">
+                        <Building2 className="w-4 h-4" />
+                      </span>
+                      <span>{clinic.name}</span>
+                    </h3>
                     <div className="space-y-1 text-sm text-gray-600 mb-4">
                       <p>📍 {clinic.address}</p>
                       <p>🏙️ {clinic.city || 'Sin ciudad'}</p>
                       {clinic.phone && <p>📞 {clinic.phone}</p>}
                     </div>
-                    
+
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleEdit(clinic)}
-                        className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm rounded-xl hover:bg-blue-700 font-medium"
+                        className="flex-1 px-6 py-3 bg-gray-100 text-gray-800 text-sm rounded-2xl hover:bg-gray-200 font-medium shadow-md shadow-gray-300/60 transition-all hover:-translate-y-0.5"
                       >
                         ✏️ Editar
                       </button>
                       <button
                         onClick={() => handleDelete(clinic.id)}
-                        className="flex-1 px-4 py-2 bg-red-600 text-white text-sm rounded-xl hover:bg-red-700 font-medium"
+                        className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-sm rounded-2xl hover:from-emerald-600 hover:to-emerald-700 font-medium shadow-lg shadow-emerald-400/40 transition-all hover:-translate-y-0.5"
                       >
                         🗑️ Eliminar
                       </button>
@@ -297,10 +347,13 @@ const ManageClinics = () => {
               </div>
 
               {clinics.length === 0 && (
-                <div className="text-center py-12 bg-white rounded-3xl shadow-lg">
-                  <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <p className="text-xl text-gray-500 mb-2">No hay clínicas registradas</p>
-                  <p className="text-sm text-gray-400">Crea tu primera clínica haciendo clic en "Nueva Clínica"</p>
+                <div className="mt-10 text-center py-12 bg-white/95 rounded-3xl shadow-lg shadow-primary-100/80 border border-primary-100 max-w-xl mx-auto">
+                  <Building2 className="w-16 h-16 text-primary-300 mx-auto mb-4" />
+                  <p className="text-xl text-gray-700 mb-2">No hay clínicas registradas</p>
+                  <p className="text-sm text-gray-500">
+                    Crea tu primera clínica haciendo clic en{' '}
+                    <span className="font-semibold">“Nueva Clínica”</span>.
+                  </p>
                 </div>
               )}
             </div>

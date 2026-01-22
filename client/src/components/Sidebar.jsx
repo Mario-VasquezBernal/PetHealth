@@ -1,29 +1,51 @@
-// ============================================
 // SIDEBAR.JSX
 // ============================================
 // Barra lateral de navegación con versión desktop (fixed, siempre visible) y móvil (overlay)
-// Secciones: Logo/header, info de usuario (nombre + ubicación), menú principal (Inicio/Citas/Historial),
-// botón "Nueva Mascota", configuración (Mi Perfil + Cerrar Sesión)
+// Secciones: Logo/header, info de usuario (nombre + ubicación), menú principal (Inicio/Citas),
+// botón "Nueva Mascota", configuración (Mi Perfil)
 // Desktop: sidebar fijo 288px (w-72), móvil: overlay con backdrop oscuro, cierra al navegar
-// Resalta ruta activa con bg azul, logout remueve token y redirige a /login
-// Props: user (datos usuario), sidebarOpen/setSidebarOpen (control móvil), onNewPet (callback agregar mascota)
+// Logo ahora viene de Cloudinary vía constants.js
 // ============================================
 
 import { useNavigate, useLocation } from 'react-router-dom';
-import { toast } from 'react-toastify';
 import { 
   PlusCircle,
   Calendar,
   X,
-  Heart,
   MapPin,
   Home as HomeIcon,
   User,
-  LogOut,
   Building2,
   Stethoscope
 } from 'lucide-react';
+import { APP_CONFIG } from '../constants';
 
+// ============================================
+// COMPONENTE: LOGO (FUERA DEL COMPONENTE)
+// ============================================
+// ✅ Se define FUERA para no resetear estado en cada render
+const LogoHeader = () => (
+  <div className="flex items-center gap-3">
+    {/* Logo Image desde Cloudinary */}
+    <img
+      src={APP_CONFIG.LOGO_URL}
+      alt={APP_CONFIG.APP_NAME}
+      className="w-10 h-10 object-contain rounded-lg"
+      onError={(e) => {
+        // Fallback si la imagen no carga
+        e.target.style.display = 'none';
+      }}
+    />
+    <div>
+      <h2 className="text-lg font-bold text-gray-900">{APP_CONFIG.APP_NAME}</h2>
+      <p className="text-xs text-gray-500">{APP_CONFIG.APP_SUBTITLE}</p>
+    </div>
+  </div>
+);
+
+// ============================================
+// COMPONENTE: SIDEBAR PRINCIPAL
+// ============================================
 const Sidebar = ({ 
   user, 
   sidebarOpen, 
@@ -32,12 +54,6 @@ const Sidebar = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/login');
-    toast.info('Sesión cerrada');
-  };
 
   // ✅ SIN HISTORIAL
   const menuItems = [
@@ -51,38 +67,14 @@ const Sidebar = ({
 
   return (
     <>
+      {/* ============================================ */}
       {/* SIDEBAR DESKTOP */}
+      {/* ============================================ */}
       <aside className="hidden lg:flex lg:flex-col lg:w-72 bg-white border-r border-gray-200 fixed h-screen z-40">
         
         {/* Logo / Header */}
         <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-xl flex items-center justify-center">
-              <Heart className="w-6 h-6 text-white" fill="currentColor" strokeWidth={1.5} />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">PetHealth</h2>
-              <p className="text-xs text-gray-500">Control Veterinario</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Usuario Info */}
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full flex items-center justify-center">
-              <User className="w-6 h-6 text-blue-600" strokeWidth={2} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">
-                {user?.full_name || user?.name || 'Usuario'}
-              </p>
-              <p className="text-xs text-gray-500 flex items-center gap-1">
-                <MapPin className="w-3 h-3" />
-                Cuenca, Ecuador
-              </p>
-            </div>
-          </div>
+          <LogoHeader />
         </div>
 
         {/* Navegación Principal */}
@@ -129,57 +121,51 @@ const Sidebar = ({
             <div className="space-y-1">
               <button 
                 onClick={() => navigate('/profile')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                  isActive('/profile')
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                    : 'text-gray-700 hover:bg-white hover:shadow-md'
-                }`}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${
+  isActive('/profile')
+    ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-400/40'
+    : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 hover:shadow-md'
+}`}
+
               >
                 <User className="w-5 h-5" strokeWidth={2} />
                 <span className="font-medium text-sm">Mi Perfil</span>
-              </button>
-
-              <button 
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-all font-medium"
-              >
-                <LogOut className="w-5 h-5" strokeWidth={2} />
-                <span className="text-sm">Cerrar Sesión</span>
               </button>
             </div>
           </div>
         </div>
       </aside>
 
+      {/* ============================================ */}
       {/* SIDEBAR MÓVIL */}
+      {/* ============================================ */}
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-50">
           <div 
-            className="absolute inset-0 bg-black/50" 
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${
+  isActive('/profile')
+    ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-400/40'
+    : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 hover:shadow-md'
+}`}
+ 
             onClick={() => setSidebarOpen(false)}
           ></div>
           <aside className="absolute left-0 top-0 bottom-0 w-72 bg-white shadow-2xl overflow-y-auto">
             
+            {/* Logo / Header Mobile */}
             <div className="p-6 border-b border-gray-100">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-xl flex items-center justify-center">
-                    <Heart className="w-6 h-6 text-white" fill="currentColor" strokeWidth={1.5} />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-gray-900">PetHealth</h2>
-                    <p className="text-xs text-gray-500">Control Veterinario</p>
-                  </div>
-                </div>
+                <LogoHeader />
                 <button 
                   onClick={() => setSidebarOpen(false)}
-                  className="w-8 h-8 hover:bg-gray-100 rounded-lg flex items-center justify-center"
+                  className="w-8 h-8 hover:bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0"
                 >
                   <X className="w-5 h-5 text-gray-600" />
                 </button>
               </div>
             </div>
 
+            {/* Usuario Info Mobile */}
             <div className="p-6 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full flex items-center justify-center">
@@ -197,6 +183,7 @@ const Sidebar = ({
               </div>
             </div>
 
+            {/* Navegación Mobile */}
             <nav className="p-4 space-y-1">
               {menuItems.map((item) => {
                 const Icon = item.icon;
@@ -221,6 +208,7 @@ const Sidebar = ({
               })}
             </nav>
 
+            {/* Botón Nueva Mascota Mobile */}
             {onNewPet && (
               <div className="p-4 border-t border-gray-100">
                 <button 
@@ -236,6 +224,7 @@ const Sidebar = ({
               </div>
             )}
 
+            {/* Configuración Mobile */}
             <div className="border-t-2 border-gray-200 bg-gray-50">
               <div className="p-4">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider px-4 mb-3">
@@ -255,17 +244,6 @@ const Sidebar = ({
                   >
                     <User className="w-5 h-5" strokeWidth={2} />
                     <span className="font-medium text-sm">Mi Perfil</span>
-                  </button>
-
-                  <button 
-                    onClick={() => {
-                      handleLogout();
-                      setSidebarOpen(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-all font-medium"
-                  >
-                    <LogOut className="w-5 h-5" strokeWidth={2} />
-                    <span className="text-sm">Cerrar Sesión</span>
                   </button>
                 </div>
               </div>
