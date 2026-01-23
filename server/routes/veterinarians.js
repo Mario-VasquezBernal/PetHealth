@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const authorization = require('../middleware/authorization');
+const { body, validationResult } = require('express-validator');
 
 // Obtener todos los veterinarios
 router.get('/', authorization, async (req, res) => {
@@ -16,9 +17,41 @@ router.get('/', authorization, async (req, res) => {
     }
 });
 
-// Crear veterinario
-router.post('/', authorization, async (req, res) => {
+// Crear veterinario CON VALIDACIONES
+router.post('/', [
+    authorization,
+    // Validaciones
+    body('name')
+        .trim()
+        .notEmpty()
+        .withMessage('El nombre es obligatorio')
+        .isLength({ min: 3 })
+        .withMessage('El nombre debe tener mínimo 3 caracteres'),
+    
+    body('specialty')
+        .optional({ checkFalsy: true })
+        .trim(),
+    
+    body('phone')
+        .optional({ checkFalsy: true })
+        .matches(/^[0-9]{10}$/)
+        .withMessage('El teléfono debe tener 10 dígitos numéricos'),
+    
+    body('email')
+        .optional({ checkFalsy: true })
+        .isEmail()
+        .withMessage('Email inválido')
+        .normalizeEmail()
+], async (req, res) => {
     try {
+        // Verificar errores de validación
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ 
+                error: errors.array()[0].msg 
+            });
+        }
+
         const { name, specialty, phone, email } = req.body;
 
         const result = await pool.query(
@@ -34,9 +67,41 @@ router.post('/', authorization, async (req, res) => {
     }
 });
 
-// Actualizar veterinario
-router.put('/:id', authorization, async (req, res) => {
+// Actualizar veterinario CON VALIDACIONES
+router.put('/:id', [
+    authorization,
+    // Validaciones
+    body('name')
+        .trim()
+        .notEmpty()
+        .withMessage('El nombre es obligatorio')
+        .isLength({ min: 3 })
+        .withMessage('El nombre debe tener mínimo 3 caracteres'),
+    
+    body('specialty')
+        .optional({ checkFalsy: true })
+        .trim(),
+    
+    body('phone')
+        .optional({ checkFalsy: true })
+        .matches(/^[0-9]{10}$/)
+        .withMessage('El teléfono debe tener 10 dígitos numéricos'),
+    
+    body('email')
+        .optional({ checkFalsy: true })
+        .isEmail()
+        .withMessage('Email inválido')
+        .normalizeEmail()
+], async (req, res) => {
     try {
+        // Verificar errores de validación
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ 
+                error: errors.array()[0].msg 
+            });
+        }
+
         const { id } = req.params;
         const { name, specialty, phone, email } = req.body;
 

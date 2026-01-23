@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import Sidebar from '../components/Sidebar';
 import MobileHeader from '../components/MobileHeader';
 import { getUserProfile } from '../dataManager';
@@ -16,6 +17,7 @@ const ManageVeterinarians = () => {
     phone: '',
     email: ''
   });
+  const [errors, setErrors] = useState({});
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -47,8 +49,89 @@ const ManageVeterinarians = () => {
     }
   };
 
+  // Validación en tiempo real
+  const validateField = (name, value) => {
+    const newErrors = { ...errors };
+
+    switch (name) {
+      case 'name': {
+        if (value.trim().length < 3) {
+          newErrors.name = 'Mínimo 3 caracteres';
+        } else {
+          delete newErrors.name;
+        }
+        break;
+      }
+
+      case 'phone': {
+        if (value && !/^[0-9]{10}$/.test(value)) {
+          newErrors.phone = 'Debe tener 10 dígitos';
+        } else {
+          delete newErrors.phone;
+        }
+        break;
+      }
+
+      case 'email': {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (value && !emailRegex.test(value)) {
+          newErrors.email = 'Email inválido';
+        } else {
+          delete newErrors.email;
+        }
+        break;
+      }
+
+      default:
+        break;
+    }
+
+    setErrors(newErrors);
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    // Solo números para teléfono
+    if (name === 'phone' && value && !/^\d*$/.test(value)) {
+      return;
+    }
+
+    setFormData({ ...formData, [name]: value });
+    validateField(name, value);
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    // Nombre
+    if (formData.name.trim().length < 3) {
+      newErrors.name = 'El nombre debe tener mínimo 3 caracteres';
+    }
+
+    // Teléfono (opcional pero si se llena debe ser válido)
+    if (formData.phone && !/^[0-9]{10}$/.test(formData.phone)) {
+      newErrors.phone = 'El teléfono debe tener 10 dígitos';
+    }
+
+    // Email (opcional pero si se llena debe ser válido)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (formData.email && !emailRegex.test(formData.email)) {
+      newErrors.email = 'Email inválido';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      toast.error('Por favor corrige los errores del formulario');
+      return;
+    }
+
     setLoading(true);
     
     try {
@@ -58,21 +141,22 @@ const ManageVeterinarians = () => {
         await axios.put(`${API_URL}/veterinarians/${editingId}`, formData, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        alert('✅ Veterinario actualizado exitosamente');
+        toast.success('✅ Veterinario actualizado exitosamente');
       } else {
         await axios.post(`${API_URL}/veterinarians`, formData, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        alert('✅ Veterinario creado exitosamente');
+        toast.success('✅ Veterinario creado exitosamente');
       }
 
       setFormData({ name: '', specialty: '', phone: '', email: '' });
+      setErrors({});
       setEditingId(null);
       setShowForm(false);
       fetchVeterinarians();
     } catch (error) {
       console.error('Error guardando veterinario:', error);
-      alert('❌ Error al guardar el veterinario');
+      toast.error(error.response?.data?.error || '❌ Error al guardar el veterinario');
     } finally {
       setLoading(false);
     }
@@ -85,6 +169,7 @@ const ManageVeterinarians = () => {
       phone: vet.phone || '',
       email: vet.email || ''
     });
+    setErrors({});
     setEditingId(vet.id);
     setShowForm(true);
   };
@@ -97,11 +182,11 @@ const ManageVeterinarians = () => {
       await axios.delete(`${API_URL}/veterinarians/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      alert('✅ Veterinario eliminado exitosamente');
+      toast.success('✅ Veterinario eliminado exitosamente');
       fetchVeterinarians();
     } catch (error) {
       console.error('Error eliminando veterinario:', error);
-      alert('❌ Error al eliminar el veterinario');
+      toast.error('❌ Error al eliminar el veterinario');
     }
   };
 
@@ -149,6 +234,7 @@ const ManageVeterinarians = () => {
                   setShowForm(!showForm);
                   setEditingId(null);
                   setFormData({ name: '', specialty: '', phone: '', email: '' });
+                  setErrors({});
                 }}
                 className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium shadow-lg hidden lg:block"
               >
@@ -166,63 +252,88 @@ const ManageVeterinarians = () => {
                   {editingId ? '✏️ Editar Veterinario' : '➕ Nuevo Veterinario'}
                 </h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  
+                  {/* Nombre */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Nombre Completo *
                     </label>
                     <input
                       type="text"
+                      name="name"
                       required
                       value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      onChange={handleChange}
+                      className={`w-full px-4 py-2.5 border ${
+                        errors.name ? 'border-red-500' : 'border-gray-300'
+                      } rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none`}
                       placeholder="Ej: Dr. Juan Pérez"
                     />
+                    {errors.name && (
+                      <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+                    )}
                   </div>
 
+                  {/* Especialidad */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Especialidad
+                      Especialidad (Opcional)
                     </label>
                     <input
                       type="text"
+                      name="specialty"
                       value={formData.specialty}
-                      onChange={(e) => setFormData({...formData, specialty: e.target.value})}
+                      onChange={handleChange}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                       placeholder="Ej: Cirugía, Dermatología"
                     />
                   </div>
 
+                  {/* Teléfono */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Teléfono
+                      Teléfono (Opcional)
                     </label>
                     <input
                       type="tel"
+                      name="phone"
                       value={formData.phone}
-                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      placeholder="Ej: 0987654321"
+                      onChange={handleChange}
+                      maxLength={10}
+                      className={`w-full px-4 py-2.5 border ${
+                        errors.phone ? 'border-red-500' : 'border-gray-300'
+                      } rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none`}
+                      placeholder="0987654321"
                     />
+                    {errors.phone && (
+                      <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+                    )}
                   </div>
 
+                  {/* Email */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email
+                      Email (Opcional)
                     </label>
                     <input
                       type="email"
+                      name="email"
                       value={formData.email}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      placeholder="Ej: vet@clinica.com"
+                      onChange={handleChange}
+                      className={`w-full px-4 py-2.5 border ${
+                        errors.email ? 'border-red-500' : 'border-gray-300'
+                      } rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none`}
+                      placeholder="vet@clinica.com"
                     />
+                    {errors.email && (
+                      <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                    )}
                   </div>
 
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full px-6 py-3.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-bold shadow-lg disabled:bg-gray-400 transition-all"
+                    className="w-full px-6 py-3.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl font-bold shadow-lg transition-all disabled:cursor-not-allowed"
                   >
                     {loading ? 'Guardando...' : editingId ? '💾 Actualizar Veterinario' : '➕ Crear Veterinario'}
                   </button>
