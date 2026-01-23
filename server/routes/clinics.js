@@ -59,24 +59,24 @@ router.put('/:id', authorization, async (req, res) => {
 });
 
 // Eliminar clínica
-router.delete('/:id', authorization, async (req, res) => {
-    try {
-        const { id } = req.params;
-        
-        const result = await pool.query(
-            'DELETE FROM clinics WHERE id = $1 RETURNING *',
-            [id]
-        );
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Clínica no encontrada' });
-        }
-
-        res.json({ message: 'Clínica eliminada exitosamente' });
-    } catch (error) {
-        console.error('Error eliminando clínica:', error);
-        res.status(500).json({ error: 'Error al eliminar clínica' });
-    }
+router.delete('/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    // 1. Eliminar QR tokens asociados a esta clínica
+    await pool.query('DELETE FROM qr_tokens WHERE clinic_id = $1', [id]);
+    
+    // 2. Desasociar veterinarios de la clínica (poner NULL en clinic_id)
+    await pool.query('UPDATE veterinarians SET clinic_id = NULL WHERE clinic_id = $1', [id]);
+    
+    // 3. Eliminar la clínica
+    await pool.query('DELETE FROM clinics WHERE id = $1', [id]);
+    
+    res.status(200).json({ message: 'Clínica eliminada exitosamente' });
+  } catch (error) {
+    console.error('Error eliminando clínica:', error);
+    res.status(500).json({ error: 'Error al eliminar clínica' });
+  }
 });
 
 module.exports = router;
