@@ -6,6 +6,7 @@ import MobileHeader from '../components/MobileHeader';
 import { getUserProfile } from '../dataManager';
 import { Stethoscope, MapPin } from 'lucide-react';
 
+
 const ManageVeterinarians = () => {
   const [user, setUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -21,24 +22,38 @@ const ManageVeterinarians = () => {
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
 
+
   const API_URL = import.meta.env.VITE_API_URL || 'https://pethealth-production.up.railway.app';
 
+
   const fetchVeterinarians = useCallback(async () => {
+    console.log('fetchVeterinarians iniciando...'); // ← DEBUG
     try {
       const token = localStorage.getItem('token');
+      console.log('Token:', token); // ← DEBUG
+      
       const res = await axios.get(`${API_URL}/veterinarians`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      console.log('Respuesta del servidor:', res.data); // ← DEBUG
+      console.log('Veterinarians:', res.data.veterinarians); // ← DEBUG
+      
       setVeterinarians(res.data.veterinarians || []);
     } catch (error) {
       console.error('Error cargando veterinarios:', error);
+      console.error('Detalles del error:', error.response); // ← DEBUG
     }
   }, [API_URL]);
 
+
   useEffect(() => {
+    console.log('useEffect ejecutándose...'); // ← DEBUG
     loadUser();
     fetchVeterinarians();
-  }, [fetchVeterinarians]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   const loadUser = async () => {
     try {
@@ -49,9 +64,11 @@ const ManageVeterinarians = () => {
     }
   };
 
+
   // Validación en tiempo real
   const validateField = (name, value) => {
     const newErrors = { ...errors };
+
 
     switch (name) {
       case 'name': {
@@ -63,6 +80,7 @@ const ManageVeterinarians = () => {
         break;
       }
 
+
       case 'phone': {
         if (value && !/^[0-9]{10}$/.test(value)) {
           newErrors.phone = 'Debe tener 10 dígitos';
@@ -71,6 +89,7 @@ const ManageVeterinarians = () => {
         }
         break;
       }
+
 
       case 'email': {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -82,37 +101,46 @@ const ManageVeterinarians = () => {
         break;
       }
 
+
       default:
         break;
     }
 
+
     setErrors(newErrors);
   };
 
+
   const handleChange = (e) => {
     const { name, value } = e.target;
+
 
     // Solo números para teléfono
     if (name === 'phone' && value && !/^\d*$/.test(value)) {
       return;
     }
 
+
     setFormData({ ...formData, [name]: value });
     validateField(name, value);
   };
 
+
   const validateForm = () => {
     const newErrors = {};
+
 
     // Nombre
     if (formData.name.trim().length < 3) {
       newErrors.name = 'El nombre debe tener mínimo 3 caracteres';
     }
 
+
     // Teléfono (opcional pero si se llena debe ser válido)
     if (formData.phone && !/^[0-9]{10}$/.test(formData.phone)) {
       newErrors.phone = 'El teléfono debe tener 10 dígitos';
     }
+
 
     // Email (opcional pero si se llena debe ser válido)
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -120,9 +148,11 @@ const ManageVeterinarians = () => {
       newErrors.email = 'Email inválido';
     }
 
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -131,6 +161,7 @@ const ManageVeterinarians = () => {
       toast.error('Por favor corrige los errores del formulario');
       return;
     }
+
 
     setLoading(true);
     
@@ -149,6 +180,7 @@ const ManageVeterinarians = () => {
         toast.success('✅ Veterinario creado exitosamente');
       }
 
+
       setFormData({ name: '', specialty: '', phone: '', email: '' });
       setErrors({});
       setEditingId(null);
@@ -162,6 +194,7 @@ const ManageVeterinarians = () => {
     }
   };
 
+
   const handleEdit = (vet) => {
     setFormData({
       name: vet.name,
@@ -173,6 +206,7 @@ const ManageVeterinarians = () => {
     setEditingId(vet.id);
     setShowForm(true);
   };
+
 
   const handleDelete = async (id) => {
     if (!confirm('¿Estás seguro de eliminar este veterinario?')) return;
@@ -190,6 +224,7 @@ const ManageVeterinarians = () => {
     }
   };
 
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       
@@ -200,12 +235,14 @@ const ManageVeterinarians = () => {
         onNewPet={null}
       />
 
+
       <div className="flex-1 lg:ml-72">
         
         <MobileHeader 
           onMenuClick={() => setSidebarOpen(true)}
           onNewPet={null}
         />
+
 
         {/* Header Desktop */}
         <div className="hidden lg:block bg-white border-b border-gray-100">
@@ -216,6 +253,7 @@ const ManageVeterinarians = () => {
             </div>
           </div>
         </div>
+
 
         <main className="px-4 lg:px-8 py-8">
           
@@ -242,6 +280,7 @@ const ManageVeterinarians = () => {
               </button>
             </div>
           </div>
+
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
@@ -274,6 +313,7 @@ const ManageVeterinarians = () => {
                     )}
                   </div>
 
+
                   {/* Especialidad */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -288,6 +328,7 @@ const ManageVeterinarians = () => {
                       placeholder="Ej: Cirugía, Dermatología"
                     />
                   </div>
+
 
                   {/* Teléfono */}
                   <div>
@@ -310,6 +351,7 @@ const ManageVeterinarians = () => {
                     )}
                   </div>
 
+
                   {/* Email */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -330,6 +372,7 @@ const ManageVeterinarians = () => {
                     )}
                   </div>
 
+
                   <button
                     type="submit"
                     disabled={loading}
@@ -340,6 +383,7 @@ const ManageVeterinarians = () => {
                 </form>
               </div>
             )}
+
 
             {/* COLUMNA 2: LISTA DE VETERINARIOS */}
             <div className={showForm ? "lg:col-span-2" : "lg:col-span-3"}>
@@ -371,6 +415,7 @@ const ManageVeterinarians = () => {
                 ))}
               </div>
 
+
               {veterinarians.length === 0 && (
                 <div className="text-center py-12 bg-white rounded-3xl shadow-lg">
                   <Stethoscope className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -385,5 +430,6 @@ const ManageVeterinarians = () => {
     </div>
   );
 };
+
 
 export default ManageVeterinarians;
