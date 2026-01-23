@@ -13,11 +13,13 @@
     "@capacitor/android": "^7.4.4",
     "@capacitor/core": "^7.4.4",
     "axios": "^1.13.2",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.555.0",
     "node-cron": "^4.2.1",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-leaflet": "^5.0.0",
     "react-qr-code": "^2.0.18",
     "react-router-dom": "^7.9.6",
     "react-toastify": "^11.0.5"

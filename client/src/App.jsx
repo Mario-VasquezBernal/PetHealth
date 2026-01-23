@@ -36,6 +36,7 @@ import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import ManageClinics from './pages/ManageClinics';
 import ManageVeterinarians from './pages/ManageVeterinarians';
+import 'leaflet/dist/leaflet.css';
 
 // Páginas
 import Home from './pages/Home';
