@@ -1,3 +1,21 @@
+// ============================================
+// AUTH.JS - RUTAS DE AUTENTICACIÓN
+// ============================================
+// Endpoints:
+// - POST /register: Registro de nuevos usuarios con validaciones
+// - POST /login: Autenticación de usuarios
+// - GET /profile: Obtener perfil del usuario autenticado
+// - PUT /profile: Actualizar datos del perfil
+// - GET /pets: Obtener mascotas del usuario
+// - GET /pets/:id: Obtener una mascota específica
+// - POST /pets: Crear nueva mascota
+// - PUT /pets/:id: Actualizar mascota
+// - DELETE /pets/:id: Eliminar mascota
+// - GET /is-verify: Verificar si el token es válido
+// - POST /forgot-password: Solicitar recuperación de contraseña
+// - POST /reset-password: Resetear contraseña con token
+// ============================================
+
 const router = require("express").Router();
 const pool = require("../db");
 const bcrypt = require("bcrypt");
@@ -6,13 +24,55 @@ const jwtGenerator = require("../utils/jwtGenerator");
 const authorization = require("../middleware/authorization");
 const crypto = require('crypto');
 const sendEmail = require('../utils/emailService');
-
+const { body, validationResult } = require('express-validator');
 
 // ========================================
-// 1. REGISTRO
+// 1. REGISTRO CON VALIDACIONES
 // ========================================
-router.post("/register", async (req, res) => {
+router.post("/register", [
+  // Validaciones
+  body('email')
+    .isEmail()
+    .withMessage('Email inválido')
+    .normalizeEmail(),
+  
+  body('password')
+    .isLength({ min: 6 })
+    .withMessage('La contraseña debe tener mínimo 6 caracteres'),
+  
+  body('name')
+    .trim()
+    .notEmpty()
+    .withMessage('El nombre completo es obligatorio')
+    .isLength({ min: 3 })
+    .withMessage('El nombre debe tener mínimo 3 caracteres'),
+  
+  body('phone')
+    .optional({ checkFalsy: true })
+    .matches(/^[0-9]{10}$/)
+    .withMessage('El teléfono debe tener 10 dígitos numéricos'),
+
+  body('address')
+    .optional({ checkFalsy: true })
+    .trim(),
+
+  body('city')
+    .optional({ checkFalsy: true })
+    .trim(),
+
+  body('country')
+    .optional({ checkFalsy: true })
+    .trim()
+], async (req, res) => {
   try {
+    // Verificar errores de validación
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        message: errors.array()[0].msg 
+      });
+    }
+
     const { name, email, password, phone, address, city, country } = req.body;
     
     const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
@@ -29,7 +89,7 @@ router.post("/register", async (req, res) => {
       `INSERT INTO users (full_name, email, password_hash, phone, address, city, country) 
        VALUES ($1, $2, $3, $4, $5, $6, $7) 
        RETURNING *`,
-      [name, email, bcryptPassword, phone, address, city, country]
+      [name, email, bcryptPassword, phone || null, address || null, city || null, country || null]
     );
 
     const token = jwtGenerator(newUser.rows[0].id);
@@ -44,7 +104,6 @@ router.post("/register", async (req, res) => {
     return res.status(500).json({ message: "Error del servidor" });
   }
 });
-
 
 // ========================================
 // 2. LOGIN
@@ -79,7 +138,6 @@ router.post("/login", async (req, res) => {
   }
 });
 
-
 // ========================================
 // 3. OBTENER PERFIL
 // ========================================
@@ -101,7 +159,6 @@ router.get("/profile", authorization, async (req, res) => {
     return res.status(500).json({ message: "Error del servidor" });
   }
 });
-
 
 // ========================================
 // 4. ACTUALIZAR PERFIL
@@ -126,7 +183,6 @@ router.put("/profile", authorization, async (req, res) => {
   }
 });
 
-
 // ========================================
 // 5. OBTENER MASCOTAS
 // ========================================
@@ -144,7 +200,6 @@ router.get("/pets", authorization, async (req, res) => {
     return res.status(500).json({ message: "Error al obtener mascotas" });
   }
 });
-
 
 // ========================================
 // 6. OBTENER UNA MASCOTA POR ID
@@ -170,7 +225,6 @@ router.get("/pets/:id", authorization, async (req, res) => {
   }
 });
 
-
 // ========================================
 // 7. CREAR MASCOTA
 // ========================================
@@ -192,7 +246,6 @@ router.post("/pets", authorization, async (req, res) => {
     return res.status(500).json({ message: "Error al crear mascota" });
   }
 });
-
 
 // ========================================
 // 8. ACTUALIZAR MASCOTA
@@ -223,7 +276,6 @@ router.put("/pets/:id", authorization, async (req, res) => {
   }
 });
 
-
 // ========================================
 // 9. ELIMINAR MASCOTA
 // ========================================
@@ -248,7 +300,6 @@ router.delete("/pets/:id", authorization, async (req, res) => {
   }
 });
 
-
 // ========================================
 // 10. VERIFICAR TOKEN
 // ========================================
@@ -259,7 +310,6 @@ router.get("/is-verify", authorization, async (req, res) => {
     return res.status(500).json({ message: "Error del servidor" }); 
   }
 });
-
 
 // ========================================
 // RECUPERACIÓN DE CONTRASEÑA
@@ -291,7 +341,7 @@ router.post("/forgot-password", async (req, res) => {
     // Generar token JWT con expiración de 1 hora
     const resetToken = jwt.sign(
       { userId: userId, purpose: 'password-reset' },
-      process.env.jwtSecret, // ✅ CAMBIADO
+      process.env.jwtSecret,
       { expiresIn: "1h" }
     );
 
@@ -335,7 +385,7 @@ router.post("/reset-password", async (req, res) => {
     // Verificar token JWT
     let payload;
     try {
-      payload = jwt.verify(token, process.env.jwtSecret); // ✅ CAMBIADO
+      payload = jwt.verify(token, process.env.jwtSecret);
     } catch (err) {
       return res.status(401).json({ error: "Token inválido o expirado" });
     }
@@ -379,6 +429,5 @@ router.post("/reset-password", async (req, res) => {
     res.status(500).json({ error: "Error del servidor" });
   }
 });
-
 
 module.exports = router;
