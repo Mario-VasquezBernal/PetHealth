@@ -4,11 +4,12 @@ const pool = require('../db');
 const authorization = require('../middleware/authorization');
 const { body, validationResult } = require('express-validator');
 
-// Obtener todas las clínicas
+// Obtener clínicas DEL USUARIO ACTUAL
 router.get('/', authorization, async (req, res) => {
     try {
         const result = await pool.query(
-            'SELECT * FROM clinics ORDER BY name ASC'
+            'SELECT * FROM clinics WHERE user_id = $1 ORDER BY name ASC',
+            [req.user.id]
         );
         res.json({ clinics: result.rows });
     } catch (error) {
@@ -74,9 +75,9 @@ router.post('/', [
         }
 
         const result = await pool.query(
-            `INSERT INTO clinics (name, address, city, phone, latitude, longitude)
-             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-            [name, address, city, phone || null, latitude || null, longitude || null]
+            `INSERT INTO clinics (name, address, city, phone, latitude, longitude, user_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+            [name, address, city, phone || null, latitude || null, longitude || null, req.user.id]
         );
 
         res.status(201).json({ clinic: result.rows[0] });
@@ -86,7 +87,7 @@ router.post('/', [
     }
 });
 
-// Actualizar clínica CON VALIDACIONES
+// Actualizar clínica (SOLO SI ES DEL USUARIO)
 router.put('/:id', [
     authorization,
     // Validaciones
@@ -143,16 +144,22 @@ router.put('/:id', [
             });
         }
 
+        // Verificar que la clínica pertenezca al usuario
+        const checkOwnership = await pool.query(
+            'SELECT * FROM clinics WHERE id = $1 AND user_id = $2',
+            [id, req.user.id]
+        );
+
+        if (checkOwnership.rows.length === 0) {
+            return res.status(404).json({ error: 'Clínica no encontrada o no autorizada' });
+        }
+
         const result = await pool.query(
             `UPDATE clinics 
              SET name = $1, address = $2, city = $3, phone = $4, latitude = $5, longitude = $6
-             WHERE id = $7 RETURNING *`,
-            [name, address, city, phone, latitude, longitude, id]
+             WHERE id = $7 AND user_id = $8 RETURNING *`,
+            [name, address, city, phone, latitude, longitude, id, req.user.id]
         );
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Clínica no encontrada' });
-        }
 
         res.json({ clinic: result.rows[0] });
     } catch (error) {
@@ -161,18 +168,18 @@ router.put('/:id', [
     }
 });
 
-// Eliminar clínica
+// Eliminar clínica (SOLO SI ES DEL USUARIO)
 router.delete('/:id', authorization, async (req, res) => {
     try {
         const { id } = req.params;
         
         const result = await pool.query(
-            'DELETE FROM clinics WHERE id = $1 RETURNING *',
-            [id]
+            'DELETE FROM clinics WHERE id = $1 AND user_id = $2 RETURNING *',
+            [id, req.user.id]
         );
 
         if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Clínica no encontrada' });
+            return res.status(404).json({ error: 'Clínica no encontrada o no autorizada' });
         }
 
         res.json({ message: 'Clínica eliminada exitosamente' });

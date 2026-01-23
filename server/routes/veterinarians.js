@@ -4,11 +4,12 @@ const pool = require('../db');
 const authorization = require('../middleware/authorization');
 const { body, validationResult } = require('express-validator');
 
-// Obtener todos los veterinarios
+// Obtener veterinarios DEL USUARIO ACTUAL
 router.get('/', authorization, async (req, res) => {
     try {
         const result = await pool.query(
-            'SELECT * FROM veterinarians ORDER BY name ASC'
+            'SELECT * FROM veterinarians WHERE user_id = $1 ORDER BY name ASC',
+            [req.user.id]
         );
         res.json({ veterinarians: result.rows });
     } catch (error) {
@@ -20,7 +21,6 @@ router.get('/', authorization, async (req, res) => {
 // Crear veterinario CON VALIDACIONES
 router.post('/', [
     authorization,
-    // Validaciones
     body('name')
         .trim()
         .notEmpty()
@@ -44,7 +44,6 @@ router.post('/', [
         .normalizeEmail()
 ], async (req, res) => {
     try {
-        // Verificar errores de validación
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({ 
@@ -55,9 +54,9 @@ router.post('/', [
         const { name, specialty, phone, email } = req.body;
 
         const result = await pool.query(
-            `INSERT INTO veterinarians (name, specialty, phone, email)
-             VALUES ($1, $2, $3, $4) RETURNING *`,
-            [name, specialty || null, phone || null, email || null]
+            `INSERT INTO veterinarians (name, specialty, phone, email, user_id)
+             VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+            [name, specialty || null, phone || null, email || null, req.user.id]
         );
 
         res.status(201).json({ veterinarian: result.rows[0] });
@@ -67,10 +66,9 @@ router.post('/', [
     }
 });
 
-// Actualizar veterinario CON VALIDACIONES
+// Actualizar veterinario (SOLO SI ES DEL USUARIO)
 router.put('/:id', [
     authorization,
-    // Validaciones
     body('name')
         .trim()
         .notEmpty()
@@ -94,7 +92,6 @@ router.put('/:id', [
         .normalizeEmail()
 ], async (req, res) => {
     try {
-        // Verificar errores de validación
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({ 
@@ -105,16 +102,22 @@ router.put('/:id', [
         const { id } = req.params;
         const { name, specialty, phone, email } = req.body;
 
+        // Verificar que el veterinario pertenezca al usuario
+        const checkOwnership = await pool.query(
+            'SELECT * FROM veterinarians WHERE id = $1 AND user_id = $2',
+            [id, req.user.id]
+        );
+
+        if (checkOwnership.rows.length === 0) {
+            return res.status(404).json({ error: 'Veterinario no encontrado o no autorizado' });
+        }
+
         const result = await pool.query(
             `UPDATE veterinarians 
              SET name = $1, specialty = $2, phone = $3, email = $4
-             WHERE id = $5 RETURNING *`,
-            [name, specialty, phone, email, id]
+             WHERE id = $5 AND user_id = $6 RETURNING *`,
+            [name, specialty, phone, email, id, req.user.id]
         );
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Veterinario no encontrado' });
-        }
 
         res.json({ veterinarian: result.rows[0] });
     } catch (error) {
@@ -123,18 +126,18 @@ router.put('/:id', [
     }
 });
 
-// Eliminar veterinario
+// Eliminar veterinario (SOLO SI ES DEL USUARIO)
 router.delete('/:id', authorization, async (req, res) => {
     try {
         const { id } = req.params;
         
         const result = await pool.query(
-            'DELETE FROM veterinarians WHERE id = $1 RETURNING *',
-            [id]
+            'DELETE FROM veterinarians WHERE id = $1 AND user_id = $2 RETURNING *',
+            [id, req.user.id]
         );
 
         if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Veterinario no encontrado' });
+            return res.status(404).json({ error: 'Veterinario no encontrado o no autorizado' });
         }
 
         res.json({ message: 'Veterinario eliminado exitosamente' });
