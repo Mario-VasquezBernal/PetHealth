@@ -16,7 +16,7 @@ router.get('/', authorization, async (req, res) => {
     }
 });
 
-// Crear veterinario (SIN license_number)
+// Crear veterinario
 router.post('/', authorization, async (req, res) => {
     try {
         const { name, specialty, phone, email } = req.body;
@@ -34,7 +34,7 @@ router.post('/', authorization, async (req, res) => {
     }
 });
 
-// Actualizar veterinario (SIN license_number)
+// Actualizar veterinario
 router.put('/:id', authorization, async (req, res) => {
     try {
         const { id } = req.params;
