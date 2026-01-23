@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import Sidebar from '../components/Sidebar';
 import MobileHeader from '../components/MobileHeader';
@@ -13,7 +13,6 @@ const ManageVeterinarians = () => {
   const [formData, setFormData] = useState({
     name: '',
     specialty: '',
-    license_number: '',
     phone: '',
     email: ''
   });
@@ -22,21 +21,7 @@ const ManageVeterinarians = () => {
 
   const API_URL = import.meta.env.VITE_API_URL || 'https://pethealth-production.up.railway.app';
 
-  useEffect(() => {
-    loadUser();
-    fetchVeterinarians();
-  }, []);
-
-  const loadUser = async () => {
-    try {
-      const userData = await getUserProfile();
-      setUser(userData);
-    } catch (error) {
-      console.error('Error cargando usuario:', error);
-    }
-  };
-
-  const fetchVeterinarians = async () => {
+  const fetchVeterinarians = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API_URL}/veterinarians`, {
@@ -45,6 +30,20 @@ const ManageVeterinarians = () => {
       setVeterinarians(res.data.veterinarians || []);
     } catch (error) {
       console.error('Error cargando veterinarios:', error);
+    }
+  }, [API_URL]);
+
+  useEffect(() => {
+    loadUser();
+    fetchVeterinarians();
+  }, [fetchVeterinarians]);
+
+  const loadUser = async () => {
+    try {
+      const userData = await getUserProfile();
+      setUser(userData);
+    } catch (error) {
+      console.error('Error cargando usuario:', error);
     }
   };
 
@@ -67,7 +66,7 @@ const ManageVeterinarians = () => {
         alert('✅ Veterinario creado exitosamente');
       }
 
-      setFormData({ name: '', specialty: '', license_number: '', phone: '', email: '' });
+      setFormData({ name: '', specialty: '', phone: '', email: '' });
       setEditingId(null);
       setShowForm(false);
       fetchVeterinarians();
@@ -83,7 +82,6 @@ const ManageVeterinarians = () => {
     setFormData({
       name: vet.name,
       specialty: vet.specialty || '',
-      license_number: vet.license_number || '',
       phone: vet.phone || '',
       email: vet.email || ''
     });
@@ -150,7 +148,7 @@ const ManageVeterinarians = () => {
                 onClick={() => {
                   setShowForm(!showForm);
                   setEditingId(null);
-                  setFormData({ name: '', specialty: '', license_number: '', phone: '', email: '' });
+                  setFormData({ name: '', specialty: '', phone: '', email: '' });
                 }}
                 className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium shadow-lg hidden lg:block"
               >
@@ -192,19 +190,6 @@ const ManageVeterinarians = () => {
                       onChange={(e) => setFormData({...formData, specialty: e.target.value})}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                       placeholder="Ej: Cirugía, Dermatología"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Número de Licencia
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.license_number}
-                      onChange={(e) => setFormData({...formData, license_number: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      placeholder="Ej: VET-12345"
                     />
                   </div>
 
@@ -253,7 +238,6 @@ const ManageVeterinarians = () => {
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">{vet.name}</h3>
                     <div className="space-y-1 text-sm text-gray-600 mb-4">
                       {vet.specialty && <p>🩺 {vet.specialty}</p>}
-                      {vet.license_number && <p>🆔 Licencia: {vet.license_number}</p>}
                       {vet.phone && <p>📞 {vet.phone}</p>}
                       {vet.email && <p>📧 {vet.email}</p>}
                     </div>

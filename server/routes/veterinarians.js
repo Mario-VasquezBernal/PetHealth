@@ -16,15 +16,15 @@ router.get('/', authorization, async (req, res) => {
     }
 });
 
-// Crear veterinario
+// Crear veterinario (SIN license_number)
 router.post('/', authorization, async (req, res) => {
     try {
-        const { name, specialty, license_number, phone, email } = req.body;
+        const { name, specialty, phone, email } = req.body;
 
         const result = await pool.query(
-            `INSERT INTO veterinarians (name, specialty, license_number, phone, email)
-             VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-            [name, specialty || null, license_number || null, phone || null, email || null]
+            `INSERT INTO veterinarians (name, specialty, phone, email)
+             VALUES ($1, $2, $3, $4) RETURNING *`,
+            [name, specialty || null, phone || null, email || null]
         );
 
         res.status(201).json({ veterinarian: result.rows[0] });
@@ -34,17 +34,17 @@ router.post('/', authorization, async (req, res) => {
     }
 });
 
-// Actualizar veterinario
+// Actualizar veterinario (SIN license_number)
 router.put('/:id', authorization, async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, specialty, license_number, phone, email } = req.body;
+        const { name, specialty, phone, email } = req.body;
 
         const result = await pool.query(
             `UPDATE veterinarians 
-             SET name = $1, specialty = $2, license_number = $3, phone = $4, email = $5
-             WHERE id = $6 RETURNING *`,
-            [name, specialty, license_number, phone, email, id]
+             SET name = $1, specialty = $2, phone = $3, email = $4
+             WHERE id = $5 RETURNING *`,
+            [name, specialty, phone, email, id]
         );
 
         if (result.rows.length === 0) {
