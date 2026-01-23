@@ -34,7 +34,8 @@ app.use("/auth", require("./routes/auth"));
 app.use("/vet", require("./routes/vet")); 
 app.use("/appointments", require("./routes/appointments"));
 app.use("/tasks", require("./routes/tasks"));
-app.use("/clinics", require("./routes/clinics"));
+app.use("/clinics", clinicsRouter);
+app.use("/veterinarians", veterinariansRouter);
 app.use("/qr", require("./routes/qr"));
 app.use("/medical-records", require("./routes/medicalRecords"));
 
@@ -48,7 +49,7 @@ app.get('/', (req, res) => {
 // ========================================
 // INICIALIZAR CRON JOBS (NOTIFICACIONES)
 // ========================================
-initCronJobs(); // ✅ AGREGAR ESTA LÍNEA
+initCronJobs();
 
 // ========================================
 // MANEJO DE ERRORES/404
@@ -65,6 +66,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
     console.log('✅ Sistema de notificaciones activado');
-app.use('/clinics', clinicsRouter);
-app.use('/veterinarians', veterinariansRouter);
 });
