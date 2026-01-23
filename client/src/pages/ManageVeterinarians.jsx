@@ -152,7 +152,6 @@ const ManageVeterinarians = () => {
       return;
     }
 
-
     setLoading(true);
     
     try {
@@ -170,12 +169,18 @@ const ManageVeterinarians = () => {
         toast.success('✅ Veterinario creado exitosamente');
       }
 
-
       setFormData({ name: '', specialty: '', phone: '', email: '' });
       setErrors({});
       setEditingId(null);
       setShowForm(false);
-      fetchVeterinarians();
+      
+      // FORZAR RECARGA INMEDIATA
+      const token2 = localStorage.getItem('token');
+      const res = await axios.get(`${API_URL}/veterinarians`, {
+        headers: { Authorization: `Bearer ${token2}` }
+      });
+      setVeterinarians(res.data.veterinarians || []);
+      
     } catch (error) {
       console.error('Error guardando veterinario:', error);
       toast.error(error.response?.data?.error || '❌ Error al guardar el veterinario');
@@ -207,7 +212,13 @@ const ManageVeterinarians = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success('✅ Veterinario eliminado exitosamente');
-      fetchVeterinarians();
+      
+      // FORZAR RECARGA INMEDIATA
+      const res = await axios.get(`${API_URL}/veterinarians`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setVeterinarians(res.data.veterinarians || []);
+      
     } catch (error) {
       console.error('Error eliminando veterinario:', error);
       toast.error('❌ Error al eliminar el veterinario');
