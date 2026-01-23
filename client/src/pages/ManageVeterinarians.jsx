@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import Sidebar from '../components/Sidebar';
@@ -26,29 +26,7 @@ const ManageVeterinarians = () => {
   const API_URL = import.meta.env.VITE_API_URL || 'https://pethealth-production.up.railway.app';
 
 
-  const fetchVeterinarians = useCallback(async () => {
-    console.log('fetchVeterinarians iniciando...'); // ← DEBUG
-    try {
-      const token = localStorage.getItem('token');
-      console.log('Token:', token); // ← DEBUG
-      
-      const res = await axios.get(`${API_URL}/veterinarians`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      console.log('Respuesta del servidor:', res.data); // ← DEBUG
-      console.log('Veterinarians:', res.data.veterinarians); // ← DEBUG
-      
-      setVeterinarians(res.data.veterinarians || []);
-    } catch (error) {
-      console.error('Error cargando veterinarios:', error);
-      console.error('Detalles del error:', error.response); // ← DEBUG
-    }
-  }, [API_URL]);
-
-
   useEffect(() => {
-    console.log('useEffect ejecutándose...'); // ← DEBUG
     loadUser();
     fetchVeterinarians();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -61,6 +39,18 @@ const ManageVeterinarians = () => {
       setUser(userData);
     } catch (error) {
       console.error('Error cargando usuario:', error);
+    }
+  };
+
+  const fetchVeterinarians = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_URL}/veterinarians`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setVeterinarians(res.data.veterinarians || []);
+    } catch (error) {
+      console.error('Error cargando veterinarios:', error);
     }
   };
 
