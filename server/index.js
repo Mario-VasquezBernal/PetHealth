@@ -1,10 +1,13 @@
 const express = require('express');
 const cors = require('cors');
-const initCronJobs = require('./jobs/cronJobs'); 
+const initCronJobs = require('./jobs/cronJobs');
 const clinicsRouter = require('./routes/clinics');
 const veterinariansRouter = require('./routes/veterinarians');
 
 const app = express();
+
+// ✅ EVITA 304 POR ETAG
+app.disable('etag');
 
 // ✅ VERIFICAR VARIABLES DE ENTORNO AL INICIAR
 console.log('🔐 JWT Secret cargado:', process.env.jwtSecret ? 'SÍ ✅' : 'NO ❌');
@@ -27,11 +30,17 @@ app.use(cors({
 
 app.use(express.json());
 
+// ✅ NO CACHE PARA API (evita respuestas viejas en GET)
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+
 // ========================================
 // RUTAS
 // ========================================
-app.use("/auth", require("./routes/auth")); 
-app.use("/vet", require("./routes/vet")); 
+app.use("/auth", require("./routes/auth"));
+app.use("/vet", require("./routes/vet"));
 app.use("/appointments", require("./routes/appointments"));
 app.use("/tasks", require("./routes/tasks"));
 app.use("/clinics", clinicsRouter);
@@ -43,7 +52,7 @@ app.use("/medical-records", require("./routes/medicalRecords"));
 // RUTA DE PRUEBA
 // ========================================
 app.get('/', (req, res) => {
-    res.send('Servidor de Mascotas funcionando 🐾'); 
+  res.send('Servidor de Mascotas funcionando 🐾');
 });
 
 // ========================================
@@ -55,7 +64,7 @@ initCronJobs();
 // MANEJO DE ERRORES/404
 // ========================================
 app.use((req, res, next) => {
-    res.status(404).json({ message: "Ruta no encontrada" });
+  res.status(404).json({ message: "Ruta no encontrada" });
 });
 
 // ========================================
@@ -64,6 +73,6 @@ app.use((req, res, next) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
-    console.log('✅ Sistema de notificaciones activado');
+  console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
+  console.log('✅ Sistema de notificaciones activado');
 });
