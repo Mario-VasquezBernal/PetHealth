@@ -45,7 +45,7 @@ router.post("/generate/:petId", authorization, async (req, res) => {
     // Verificar que la mascota pertenece al usuario
     const pet = await pool.query(
       "SELECT * FROM pets WHERE id = $1 AND user_id = $2",
-      [petId, req.user]
+      [petId, req.user.id]
     );
 
     if (pet.rows.length === 0) {

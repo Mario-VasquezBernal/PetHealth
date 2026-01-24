@@ -27,7 +27,7 @@ router.get("/owner", authorization, async (req, res) => {
              JOIN pets p ON t.pet_id = p.id
              WHERE t.owner_id = $1
              ORDER BY t.created_at DESC`,
-            [req.user]
+            [req.user.id]
         );
         res.json(tasks.rows);
     } catch (err) {

@@ -24,8 +24,9 @@ router.get("/", authorization, async (req, res) => {
        LEFT JOIN clinics c ON v.clinic_id = c.id
        WHERE a.user_id = $1 AND a.status != 'Cancelada'
        ORDER BY a.date ASC`,
-      [req.user]
+      [req.user.id]
     );
+
     res.json(appointments.rows);
   } catch (err) {
     console.error(err.message);
@@ -38,9 +39,10 @@ router.post("/", authorization, async (req, res) => {
   try {
     const { pet_id, vet_id, date, reason } = req.body;
 
+    // Verificar que la mascota pertenezca al usuario
     const ownership = await pool.query(
       "SELECT * FROM pets WHERE id = $1 AND user_id = $2",
-      [pet_id, req.user]
+      [pet_id, req.user.id]
     );
 
     if (ownership.rows.length === 0) {
@@ -51,16 +53,20 @@ router.post("/", authorization, async (req, res) => {
       `INSERT INTO appointments (user_id, pet_id, vet_id, date, reason) 
        VALUES ($1, $2, $3, $4, $5) 
        RETURNING *`,
-      [req.user, pet_id, vet_id, date, reason]
+      [req.user.id, pet_id, vet_id, date, reason]
     );
 
-    const user = await pool.query("SELECT email, full_name FROM users WHERE id = $1", [req.user]);
-    const { email, full_name } = user.rows[0];
+    const user = await pool.query(
+      "SELECT email, full_name FROM users WHERE id = $1",
+      [req.user.id]
+    );
+
+    const { email, full_name } = user.rows[0] || {};
 
     const subject = "Cita Agendada";
-    const message = `Hola ${full_name}, registrado tu cita para el ${new Date(date).toLocaleString()}. ${reason}. ¡No olvides asistir!`;
+    const message = `Hola ${full_name || ""}, registrado tu cita para el ${new Date(date).toLocaleString()}. ${reason}. ¡No olvides asistir!`;
 
-    if (sendEmail) {
+    if (sendEmail && email) {
       sendEmail(email, subject, message);
     }
 
@@ -75,9 +81,15 @@ router.post("/", authorization, async (req, res) => {
 router.delete("/:id", authorization, async (req, res) => {
   try {
     const { id } = req.params;
-    await pool.query("DELETE FROM appointments WHERE id = $1 AND user_id = $2", [id, req.user]);
+
+    await pool.query(
+      "DELETE FROM appointments WHERE id = $1 AND user_id = $2",
+      [id, req.user.id]
+    );
+
     res.json("Cita eliminada");
   } catch (err) {
+    console.error(err.message);
     res.status(500).send("Error");
   }
 });

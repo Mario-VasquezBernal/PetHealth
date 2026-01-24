@@ -145,7 +145,7 @@ router.get("/profile", authorization, async (req, res) => {
   try {
     const user = await pool.query(
       "SELECT full_name as name, email, phone, address, city, country FROM users WHERE id = $1", 
-      [req.user]
+      [req.user.id]
     );
     
     if (user.rows.length === 0) {
@@ -190,7 +190,7 @@ router.get("/pets", authorization, async (req, res) => {
   try {
     const pets = await pool.query(
       "SELECT * FROM pets WHERE user_id = $1 ORDER BY created_at DESC",
-      [req.user]
+      [req.user.id]
     );
     
     return res.json(pets.rows);
