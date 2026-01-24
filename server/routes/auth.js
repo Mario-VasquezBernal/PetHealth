@@ -172,7 +172,8 @@ router.put("/profile", authorization, async (req, res) => {
        SET full_name = $1, phone = $2, address = $3, city = $4, country = $5 
        WHERE id = $6 
        RETURNING full_name as name, email, phone, address, city, country`,
-      [name, phone, address, city, country, req.user]
+      [name, phone, address, city, country, req.user.id]
+
     );
     
     return res.json(update.rows[0]);
@@ -210,7 +211,8 @@ router.get("/pets/:id", authorization, async (req, res) => {
     
     const pet = await pool.query(
       "SELECT * FROM pets WHERE id = $1 AND user_id = $2",
-      [id, req.user]
+      [id, req.user.id]
+
     );
     
     if (pet.rows.length === 0) {
@@ -236,7 +238,8 @@ router.post("/pets", authorization, async (req, res) => {
       `INSERT INTO pets (user_id, name, species, breed, birth_date, gender, weight, photo_url, allergies, is_sterilized)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
-      [req.user, name, species, breed, birth_date, gender, weight, photo_url, allergies, is_sterilized]
+      [req.user.id, name, species, breed, birth_date, gender, weight, photo_url, allergies, is_sterilized]
+
     );
     
     return res.json(newPet.rows[0]);
@@ -261,7 +264,8 @@ router.put("/pets/:id", authorization, async (req, res) => {
            weight = $6, photo_url = $7, allergies = $8, is_sterilized = $9
        WHERE id = $10 AND user_id = $11
        RETURNING *`,
-      [name, species, breed, birth_date, gender, weight, photo_url, allergies, is_sterilized, id, req.user]
+      [name, species, breed, birth_date, gender, weight, photo_url, allergies, is_sterilized, id, req.user.id]
+
     );
     
     if (updatePet.rows.length === 0) {
@@ -285,7 +289,8 @@ router.delete("/pets/:id", authorization, async (req, res) => {
     
     const deletePet = await pool.query(
       "DELETE FROM pets WHERE id = $1 AND user_id = $2 RETURNING *",
-      [id, req.user]
+      [id, req.user.id]
+
     );
     
     if (deletePet.rows.length === 0) {

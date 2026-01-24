@@ -6,15 +6,16 @@ module.exports = (req, res, next) => {
     const authHeader = req.header("Authorization"); // "Bearer <token>"
 
     if (!authHeader) {
-      return res.status(403).json({ error: "No autorizado - Token no proporcionado" });
+      return res.status(401).json({ error: "No autorizado - Token no proporcionado" });
     }
 
-    const jwtToken = authHeader.startsWith("Bearer ")
-      ? authHeader.slice(7)
-      : authHeader;
+    if (!authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "No autorizado - Formato Bearer inválido" });
+    }
+
+    const jwtToken = authHeader.slice(7).trim();
 
     const secret = process.env.jwtSecret;
-
     if (!secret) {
       return res.status(500).json({ error: "Error de configuración del servidor" });
     }
@@ -29,13 +30,13 @@ module.exports = (req, res, next) => {
       payload?.sub ||
       payload?.user;
 
-    if (!userId) {
-      return res.status(403).json({ error: "Token inválido: user id faltante" });
+    if (!userId || typeof userId !== "string") {
+      return res.status(401).json({ error: "Token inválido: user id faltante" });
     }
 
     req.user = { id: userId };
     next();
   } catch (err) {
-    return res.status(403).json({ error: `Error de autenticación: ${err.message}` });
+    return res.status(401).json({ error: `Error de autenticación: ${err.message}` });
   }
 };

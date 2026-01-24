@@ -50,7 +50,8 @@ router.post("/", authorization, async (req, res) => {
             `INSERT INTO tasks (owner_id, pet_id, description, task_type, vet_id)
              VALUES ($1, $2, $3, $4, $5)
              RETURNING id`,
-            [req.user, pet_id, description, task_type, vet_id || null]
+            [req.user.id, pet_id, description, task_type, vet_id || null]
+
         );
 
         // ✅ Obtener información del dueño y la mascota
