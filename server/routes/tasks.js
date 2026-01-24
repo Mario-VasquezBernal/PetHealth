@@ -56,7 +56,7 @@ router.post("/", authorization, async (req, res) => {
 
         // ✅ Obtener información del dueño y la mascota
         const pet = await pool.query("SELECT name FROM pets WHERE id = $1", [pet_id]);
-        const owner = await getOwnerInfo(req.user);
+        const owner = await getOwnerInfo(req.user.id);
 
         console.log('👤 Owner info:', owner);
         console.log('🐾 Pet name:', pet.rows[0].name);

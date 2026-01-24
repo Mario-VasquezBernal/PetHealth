@@ -127,7 +127,8 @@ router.post('/create', async (req, res) => {
 // ========================================
 router.get('/pet/:petId', authorization, async (req, res) => {
     const { petId } = req.params;
-    const userId = req.user;
+    const userId = req.user.id;
+
 
     try {
         // Verificar propiedad de la mascota

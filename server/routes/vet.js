@@ -27,7 +27,7 @@ router.post("/", authorization, async (req, res) => {
   try {
     const { name, specialty, clinic_id } = req.body;
     
-    console.log('📥 Datos recibidos en backend:', { name, specialty, clinic_id, user: req.user });
+    console.log('📥 Datos recibidos en backend:', { name, specialty, clinic_id, user: req.user.id });
     
     if (!name || !specialty) {
       return res.status(400).json({ error: "Nombre y especialidad son obligatorios" });
