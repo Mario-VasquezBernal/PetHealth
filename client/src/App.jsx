@@ -49,6 +49,7 @@ import Appointments from './pages/Appointments';
 
 import MedicalRecords from './pages/MedicalRecords';
 import ResetPassword from './pages/ResetPassword';
+import MyReviewsPage from './pages/MyReviewsPage';
 
 function App() {
   return (
@@ -59,6 +60,7 @@ function App() {
         <Route path="/manage-clinics" element={<ManageClinics />} />
         <Route path="/manage-veterinarians" element={<ManageVeterinarians />} /> 
         <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/my-reviews" element={<MyReviewsPage />} />
         <Route path="/qr/:token" element={<VetQRAccess />} />
         <Route element={<MainLayout />}>
           
