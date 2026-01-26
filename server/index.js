@@ -1,3 +1,4 @@
+console.log("✅ RATINGS ROUTER FILE LOADED");
 const express = require('express');
 const cors = require('cors');
 const initCronJobs = require('./jobs/cronJobs');

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Star, Edit2, Trash2, AlertCircle } from 'lucide-react';
 
 const MyReviews = () => {
   const [reviews, setReviews] = useState([]);
@@ -9,19 +10,34 @@ const MyReviews = () => {
   const [editRating, setEditRating] = useState(0);
   const [editComment, setEditComment] = useState('');
 
+  // ✅ IMPORTANTE: Usar la URL completa de tu API
+  const API_URL = import.meta.env.VITE_API_URL || 'https://pethealth-production.up.railway.app';
+
   useEffect(() => {
     fetchReviews();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchReviews = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/ratings/my-reviews', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      setError(null);
+      
+      const token = localStorage.getItem('token');
+      
+      // ✅ Usar URL completa
+      const response = await axios.get(`${API_URL}/ratings/my-reviews`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      setReviews(response.data.reviews);
+      
+      // ✅ Validar que reviews sea un array
+      const reviewsData = response.data.reviews;
+      setReviews(Array.isArray(reviewsData) ? reviewsData : []);
+      
     } catch (err) {
+      console.error('Error cargando reviews:', err);
       setError(err.response?.data?.error || 'Error al cargar tus reseñas');
+      setReviews([]);
     } finally {
       setLoading(false);
     }
@@ -31,7 +47,8 @@ const MyReviews = () => {
     if (!window.confirm('¿Estás seguro de que deseas eliminar esta reseña?')) return;
 
     try {
-      await axios.delete(`/ratings/${reviewId}`, {
+      // ✅ URL completa
+      await axios.delete(`${API_URL}/ratings/${reviewId}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       setReviews(reviews.filter((r) => r.id !== reviewId));
@@ -48,8 +65,9 @@ const MyReviews = () => {
 
   const handleEditSave = async (reviewId) => {
     try {
+      // ✅ URL completa
       const response = await axios.put(
-        `/ratings/${reviewId}`,
+        `${API_URL}/ratings/${reviewId}`,
         {
           rating: editRating,
           comment: editComment || null
@@ -59,7 +77,13 @@ const MyReviews = () => {
         }
       );
 
-            setReviews(reviews.map((r) => r.id === reviewId ? response.data : r));
+      // ✅ Actualizar el estado con la respuesta
+      setReviews(reviews.map((r) => 
+        r.id === reviewId 
+          ? { ...r, rating: response.data.rating.rating, comment: response.data.rating.comment } 
+          : r
+      ));
+      setEditingId(null);
       
     } catch (err) {
       alert(err.response?.data?.error || 'Error al actualizar la reseña');
@@ -69,42 +93,52 @@ const MyReviews = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-8">Mis Reseñas</h1>
-
+    <div className="w-full">
       {error && (
-        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-          {error}
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium">Error</p>
+            <p className="text-sm">{error}</p>
+          </div>
         </div>
       )}
 
       {reviews.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-600 text-lg">Aún no has dejado ninguna reseña</p>
-          <p className="text-gray-500 text-sm mt-2">Las reseñas aparecerán aquí después de tus citas</p>
+        <div className="text-center py-16 bg-white rounded-3xl shadow-lg border border-gray-100">
+          <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Star className="w-10 h-10 text-yellow-500" />
+          </div>
+          <p className="text-xl font-semibold text-gray-900 mb-2">Aún no has dejado ninguna reseña</p>
+          <p className="text-gray-500">Las reseñas aparecerán aquí después de tus citas</p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {reviews.map((review) => (
-            <div key={review.id} className="bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-400">
+            <div 
+              key={review.id} 
+              className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-yellow-400 hover:shadow-xl transition-shadow"
+            >
               {editingId === review.id ? (
                 // Edit Mode
                 <div>
                   <div className="mb-4">
-                    <label className="block text-sm font-semibold mb-2">Calificación</label>
+                    <label className="block text-sm font-semibold mb-2 text-gray-700">
+                      Calificación
+                    </label>
                     <div className="flex gap-2 text-4xl">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
                           key={star}
                           type="button"
                           onClick={() => setEditRating(star)}
-                          className="focus:outline-none"
+                          className="focus:outline-none hover:scale-110 transition-transform"
                         >
                           <span className={editRating >= star ? 'text-yellow-400' : 'text-gray-300'}>
                             ★
@@ -113,27 +147,32 @@ const MyReviews = () => {
                       ))}
                     </div>
                   </div>
+                  
                   <div className="mb-4">
-                    <label className="block text-sm font-semibold mb-2">Comentario</label>
+                    <label className="block text-sm font-semibold mb-2 text-gray-700">
+                      Comentario
+                    </label>
                     <textarea
                       value={editComment}
                       onChange={(e) => setEditComment(e.target.value)}
                       maxLength={500}
                       rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                      placeholder="Escribe tu opinión sobre la atención recibida..."
                     />
-                    <p className="text-xs text-gray-500 mt-1">{editComment.length}/500</p>
+                    <p className="text-xs text-gray-500 mt-1">{editComment.length}/500 caracteres</p>
                   </div>
+                  
                   <div className="flex gap-3">
                     <button
                       onClick={() => handleEditSave(review.id)}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                      className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl hover:from-emerald-600 hover:to-emerald-700 font-medium shadow-lg transition-all"
                     >
-                      Guardar
+                      💾 Guardar
                     </button>
                     <button
                       onClick={() => setEditingId(null)}
-                      className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                      className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium transition-colors"
                     >
                       Cancelar
                     </button>
@@ -142,12 +181,17 @@ const MyReviews = () => {
               ) : (
                 // View Mode
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-800">{review.veterinarian_name}</h3>
-                      <p className="text-sm text-gray-600">{review.specialty}</p>
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-gray-900 mb-1">
+                        {review.veterinarian_name}
+                      </h3>
+                      <p className="text-sm text-gray-600 flex items-center gap-1">
+                        <span className="inline-block w-2 h-2 bg-emerald-500 rounded-full"></span>
+                        {review.specialty}
+                      </p>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 text-2xl">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <span
                           key={star}
@@ -160,33 +204,37 @@ const MyReviews = () => {
                   </div>
 
                   {review.comment && (
-                    <p className="text-gray-700 mb-4 italic">"{review.comment}"</p>
+                    <div className="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-100">
+                      <p className="text-gray-700 italic leading-relaxed">"{review.comment}"</p>
+                    </div>
                   )}
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                     <div className="text-xs text-gray-500">
-                      <p>
-                        {new Date(review.created_at).toLocaleDateString('es-ES', {
+                      <p className="font-medium">
+                        📅 {new Date(review.created_at).toLocaleDateString('es-ES', {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric'
                         })}
                       </p>
                       {review.updated_at !== review.created_at && (
-                        <p className="text-gray-400">Editado</p>
+                        <p className="text-gray-400 mt-1">✏️ Editado</p>
                       )}
                     </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleEditStart(review)}
-                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm"
+                        className="px-4 py-2 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 font-medium text-sm flex items-center gap-1.5 transition-colors"
                       >
+                        <Edit2 className="w-4 h-4" />
                         Editar
                       </button>
                       <button
                         onClick={() => handleDelete(review.id)}
-                        className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm"
+                        className="px-4 py-2 bg-red-100 text-red-700 rounded-xl hover:bg-red-200 font-medium text-sm flex items-center gap-1.5 transition-colors"
                       >
+                        <Trash2 className="w-4 h-4" />
                         Eliminar
                       </button>
                     </div>
