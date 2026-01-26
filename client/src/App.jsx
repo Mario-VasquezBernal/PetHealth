@@ -60,7 +60,6 @@ function App() {
         <Route path="/manage-clinics" element={<ManageClinics />} />
         <Route path="/manage-veterinarians" element={<ManageVeterinarians />} /> 
         <Route path="/reset-password" element={<ResetPassword />} />
-                  <Route path="/my-reviews" element={<MyReviewsPage />} />
         <Route path="/qr/:token" element={<VetQRAccess />} />
         <Route element={<MainLayout />}>
           
@@ -78,6 +77,7 @@ function App() {
              <Route path="/profile" element={<Profile />} />
              <Route path="/appointments" element={<Appointments />} />
              <Route path="/medical-records" element={<MedicalRecords />} />
+                      <Route path="/my-reviews" element={<MyReviewsPage />} />
           </Route>
 
         </Route>
