@@ -59,7 +59,7 @@ const MyReviews = () => {
         }
       );
 
-      setReviews(reviews.map((r) => (r.id === reviewId ? response.data.rating : r)));
+      setReviews(reviews.map((r) => (r.id === reviewId ? response.data. : r)));
       setEditingId(null);
     } catch (err) {
       alert(err.response?.data?.error || 'Error al actualizar la reseña');
