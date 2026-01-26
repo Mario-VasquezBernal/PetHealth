@@ -3,6 +3,7 @@ const cors = require('cors');
 const initCronJobs = require('./jobs/cronJobs');
 const clinicsRouter = require('./routes/clinics');
 const veterinariansRouter = require('./routes/veterinarians');
+const ratingsRouter = require('./routes/ratings');
 
 const app = express();
 
@@ -47,6 +48,7 @@ app.use("/clinics", clinicsRouter);
 app.use("/veterinarians", veterinariansRouter);
 app.use("/qr", require("./routes/qr"));
 app.use("/medical-records", require("./routes/medicalRecords"));
+app.use('/ratings', ratingsRouter);
 
 // ========================================
 // RUTA DE PRUEBA
