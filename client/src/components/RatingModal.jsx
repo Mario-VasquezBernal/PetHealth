@@ -10,7 +10,7 @@ const RatingModal = ({ isOpen, veterinarian, appointmentId, onClose, onSuccess }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (rating === 0) {
       setError('Por favor selecciona una calificación');
       return;
@@ -20,22 +20,29 @@ const RatingModal = ({ isOpen, veterinarian, appointmentId, onClose, onSuccess }
     setError(null);
 
     try {
-      const response = await axios.post('/ratings', {
-        veterinarian_id: veterinarian.id,
-        appointment_id: appointmentId,
-        rating,
-        comment: comment || null
-      }, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/ratings`,   // ✅ URL correcta al backend
+        {
+          veterinarian_id: veterinarian.id,
+          appointment_id: appointmentId,
+          rating,
+          comment: comment || null
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
 
       if (onSuccess) onSuccess(response.data);
-      
+
       // Reset form
       setRating(0);
       setComment('');
       onClose();
     } catch (err) {
+      console.error(err);
       setError(err.response?.data?.error || 'Error al enviar la calificación');
     } finally {
       setLoading(false);

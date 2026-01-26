@@ -10,6 +10,7 @@
 // Contador de doctores registrados en badge, mensaje informativo si no hay clínicas creadas
 // ============================================
 
+import StarRating from '../components/StarRating';
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { 
@@ -44,45 +45,43 @@ const VetManagement = ({ onClose }) => {
     };
 
     const handleCreate = async (e) => {
-    e.preventDefault();
-    
-    if (!form.name || !form.specialty) {
-        return toast.warning("Completa nombre y especialidad");
-    }
-
-    try {
-        // ✅ Solo incluir clinic_id si tiene un valor válido
-        const vetData = {
-            name: form.name.trim(),
-            specialty: form.specialty.trim()
-        };
-
-        // ✅ Solo agregar clinic_id si no está vacío
-        if (form.clinic_id && form.clinic_id !== '') {
-            vetData.clinic_id = form.clinic_id;
+        e.preventDefault();
+        
+        if (!form.name || !form.specialty) {
+            return toast.warning("Completa nombre y especialidad");
         }
 
-        console.log('📤 Enviando datos:', vetData); // Para debug
+        try {
+            // ✅ Solo incluir clinic_id si tiene un valor válido
+            const vetData = {
+                name: form.name.trim(),
+                specialty: form.specialty.trim()
+            };
 
-        await createVeterinarian(vetData);
-        toast.success("Doctor registrado ✅");
-        setForm({ name: '', specialty: '', clinic_id: '' });
-        
-        const updatedVets = await getVeterinarians(); 
-        setVets(Array.isArray(updatedVets) ? updatedVets : []);
-    } catch (error) {
-        console.error('❌ Error completo:', error);
-        toast.error("Error al crear doctor: " + error.message);
-    }
-};
+            if (form.clinic_id && form.clinic_id !== '') {
+                vetData.clinic_id = form.clinic_id;
+            }
 
+            console.log('📤 Enviando datos:', vetData);
+
+            await createVeterinarian(vetData);
+            toast.success("Doctor registrado ✅");
+            setForm({ name: '', specialty: '', clinic_id: '' });
+
+            const updatedVets = await getVeterinarians(); 
+            setVets(Array.isArray(updatedVets) ? updatedVets : []);
+        } catch (error) {
+            console.error('❌ Error completo:', error);
+            toast.error("Error al crear doctor: " + error.message);
+        }
+    };
 
     const handleDelete = async (id) => {
         if (window.confirm("¿Eliminar a este doctor?")) {
             try {
                 await deleteVeterinarian(id);
                 toast.info("Doctor eliminado 🗑️");
-                
+
                 const updatedVets = await getVeterinarians();
                 setVets(Array.isArray(updatedVets) ? updatedVets : []);
             } catch (error) {
@@ -132,7 +131,7 @@ const VetManagement = ({ onClose }) => {
                         <UserPlus className="w-5 h-5 text-primary-600" />
                         <h3 className="font-bold text-primary-900">Nuevo Doctor</h3>
                     </div>
-                    
+
                     <form onSubmit={handleCreate} className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -156,7 +155,7 @@ const VetManagement = ({ onClose }) => {
                                 />
                             </div>
                         </div>
-                        
+
                         <div>
                             <label className="block text-sm font-medium text-primary-700 mb-1 flex items-center gap-1">
                                 <Building2 className="w-4 h-4" />
@@ -176,37 +175,9 @@ const VetManagement = ({ onClose }) => {
                                 Puedes asignar la clínica ahora o después
                             </p>
                         </div>
-                        
-                        {/* ✅ BOTÓN DE GUARDAR CON ESTILOS INLINE */}
-                        <button 
-                            type="submit"
-                            style={{
-                                width: '100%',
-                                background: 'linear-gradient(to right, #10b981, #059669)',
-                                color: '#ffffff',
-                                fontWeight: 'bold',
-                                padding: '0.75rem',
-                                borderRadius: '0.75rem',
-                                border: 'none',
-                                cursor: 'pointer',
-                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                transition: 'all 0.2s',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.5rem'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'linear-gradient(to right, #059669, #047857)';
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                                e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'linear-gradient(to right, #10b981, #059669)';
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-                            }}
-                        >
+
+                        {/* BOTÓN GUARDAR */}
+                        <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl flex justify-center items-center gap-2">
                             <Plus className="w-5 h-5" />
                             Guardar Doctor
                         </button>
@@ -221,7 +192,7 @@ const VetManagement = ({ onClose }) => {
                             {vets.length} {vets.length === 1 ? 'doctor' : 'doctores'}
                         </span>
                     </h3>
-                    
+
                     <div className="space-y-3 max-h-96 overflow-y-auto">
                         {loading ? (
                             <p className="text-primary-500 text-center py-8">Cargando...</p>
@@ -233,6 +204,7 @@ const VetManagement = ({ onClose }) => {
                         ) : (
                             vets.map(vet => {
                                 const clinic = clinics.find(c => c.id === vet.clinic_id);
+
                                 return (
                                     <div 
                                         key={vet.id} 
@@ -244,6 +216,13 @@ const VetManagement = ({ onClose }) => {
                                             </div>
                                             <div>
                                                 <p className="font-bold text-primary-900">{vet.name}</p>
+
+                                                {/* ⭐ Estrellas promedio */}
+                                                <StarRating
+                                                    value={vet.average_rating}
+                                                    total={vet.total_ratings}
+                                                />
+
                                                 <p className="text-sm text-primary-600">{vet.specialty}</p>
                                                 <p className="text-xs text-primary-500 flex items-center gap-1 mt-1">
                                                     <Building2 className="w-3 h-3" />
@@ -251,6 +230,7 @@ const VetManagement = ({ onClose }) => {
                                                 </p>
                                             </div>
                                         </div>
+
                                         <button 
                                             onClick={() => handleDelete(vet.id)}
                                             className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
