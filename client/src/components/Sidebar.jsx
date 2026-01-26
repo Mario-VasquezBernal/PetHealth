@@ -16,7 +16,7 @@ import {
   Home as HomeIcon,
   User,
   Building2,
-  Stethoscope
+  Stethoscope,
    Star
 } from 'lucide-react';
 import { APP_CONFIG } from '../constants';
