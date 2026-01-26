@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import Sidebar from '../components/Sidebar';
 import MobileHeader from '../components/MobileHeader';
+import RatingModal from '../components/RatingModal';
 import { 
     getPets, 
     getVeterinarians,
@@ -47,6 +48,9 @@ const Appointments = () => {
   const [selectedClinicId, setSelectedClinicId] = useState('');
   const [isVetModalOpen, setIsVetModalOpen] = useState(false);
   const [isClinicModalOpen, setIsClinicModalOpen] = useState(false);
+      const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+  const [selectedVeterinarianForRating, setSelectedVeterinarianForRating] = useState(null);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
   
   const loadData = useCallback(async () => {
       try {
@@ -408,6 +412,15 @@ const Appointments = () => {
       )}
       
       {isClinicModalOpen && <ClinicManagement onClose={handleCloseClinicModal} />}
+          {/* Rating Modal */}
+      <RatingModal
+        isOpen={isRatingModalOpen}
+        veterinarian={selectedVeterinarianForRating}
+        appointmentId={selectedAppointmentId}
+        onClose={() => setIsRatingModalOpen(false)}
+        onSuccess={() => loadData()}
+      />
+
     </div>
   );
 };
