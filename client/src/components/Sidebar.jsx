@@ -17,6 +17,7 @@ import {
   User,
   Building2,
   Stethoscope
+   Star
 } from 'lucide-react';
 import { APP_CONFIG } from '../constants';
 
@@ -61,6 +62,7 @@ const Sidebar = ({
     { icon: Calendar, label: 'Citas', path: '/appointments' },
     { icon: Building2, label: 'Clínicas', path: '/manage-clinics' },
     { icon: Stethoscope, label: 'Veterinarios', path: '/manage-veterinarians' },
+        { icon: Star, label: 'Mis Reseñas', path: '/my-reviews' },
   ];
 
   const isActive = (path) => location.pathname === path;
