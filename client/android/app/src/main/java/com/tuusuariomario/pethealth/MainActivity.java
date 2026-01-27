@@ -1,4 +1,4 @@
-package com.pethealth.app;
+package com.tuusuariomario.pethealth;
 
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;

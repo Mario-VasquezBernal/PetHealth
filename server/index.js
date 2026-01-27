@@ -22,15 +22,11 @@ console.log('🌐 Frontend URL:', process.env.FRONTEND_URL || 'NO configurada (u
 // MIDDLEWARE
 // ========================================
 app.use(cors({
-  origin: [
-    'https://pet-health-s659.vercel.app',
-    'https://willowy-madeleine-c31fcf.netlify.app',
-    'http://localhost:5173',
-    'http://localhost:3000'
-  ],
+  origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
 }));
+
 
 // ✅ ESTE DEBE IR ANTES DE LAS RUTAS
 app.use(express.json());
