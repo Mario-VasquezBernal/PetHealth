@@ -23,8 +23,7 @@ console.log('🌐 Frontend URL:', process.env.FRONTEND_URL || 'NO configurada (u
 // ========================================
 app.use(cors({
   origin: true,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
 }));
 
 
