@@ -22,9 +22,10 @@ console.log('🌐 Frontend URL:', process.env.FRONTEND_URL || 'NO configurada (u
 // MIDDLEWARE
 // ========================================
 app.use(cors({
-  origin: true,
-   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
 }));
+
 
 
 // ✅ ESTE DEBE IR ANTES DE LAS RUTAS
