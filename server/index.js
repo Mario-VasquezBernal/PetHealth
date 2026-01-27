@@ -2,9 +2,11 @@ console.log("✅ RATINGS ROUTER FILE LOADED");
 const express = require('express');
 const cors = require('cors');
 const initCronJobs = require('./jobs/cronJobs');
+
 const clinicsRouter = require('./routes/clinics');
 const veterinariansRouter = require('./routes/veterinarians');
 const ratingsRouter = require('./routes/ratings');
+const aiRoutes = require('./routes/ai');
 
 const app = express();
 
@@ -30,9 +32,10 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
 }));
 
+// ✅ ESTE DEBE IR ANTES DE LAS RUTAS
 app.use(express.json());
 
-// ✅ NO CACHE PARA API (evita respuestas viejas en GET)
+// ✅ NO CACHE PARA API
 app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
@@ -49,7 +52,10 @@ app.use("/clinics", clinicsRouter);
 app.use("/veterinarians", veterinariansRouter);
 app.use("/qr", require("./routes/qr"));
 app.use("/medical-records", require("./routes/medicalRecords"));
-app.use('/ratings', ratingsRouter);
+app.use("/ratings", ratingsRouter);
+
+// ✅ AHORA SÍ: IA
+app.use('/ai', aiRoutes);
 
 // ========================================
 // RUTA DE PRUEBA
@@ -59,14 +65,14 @@ app.get('/', (req, res) => {
 });
 
 // ========================================
-// INICIALIZAR CRON JOBS (NOTIFICACIONES)
+// INICIALIZAR CRON JOBS
 // ========================================
 initCronJobs();
 
 // ========================================
-// MANEJO DE ERRORES/404
+// 404
 // ========================================
-app.use((req, res, next) => {
+app.use((req, res) => {
   res.status(404).json({ message: "Ruta no encontrada" });
 });
 

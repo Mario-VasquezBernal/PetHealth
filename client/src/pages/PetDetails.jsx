@@ -23,6 +23,8 @@ import QRGenerator from '../components/QRGenerator';
 import MedicalHistory from '../components/MedicalHistory';
 import WeightPrediction from '../components/WeightPrediction';
 import HealthRiskCalculator from '../components/HealthRiskCalculator';
+import HealthAIPredictor from '../components/HealthAIPredictor';
+
 
 import { 
   Calendar, 
@@ -417,6 +419,9 @@ const PetDetails = () => {
 
                     {/* ANÁLISIS DE RIESGO */}
                     <HealthRiskCalculator pet={pet} />
+                    {/* IA PREDICTIVA DE SALUD */}
+<HealthAIPredictor petId={pet.id} />
+
 
                     {/* Alerta de Alergias */}
                     {pet.allergies && (

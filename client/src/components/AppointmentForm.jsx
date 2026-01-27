@@ -24,18 +24,21 @@ const AppointmentForm = ({ onCreated }) => {
     const load = async () => {
       try {
         const [p, v, c] = await Promise.all([
-  getPets(),
-  getVeterinarians(),
-  getClinics()
-]);
+          getPets(),
+          getVeterinarians(),
+          getClinics()
+        ]);
 
-setPets(Array.isArray(p) ? p : p.pets || []);
-setVets(Array.isArray(v) ? v : v.veterinarians || []);
-setClinics(Array.isArray(c) ? c : c.clinics || []);
+        const petsArr = Array.isArray(p) ? p : p.pets || [];
+        const vetsArr = Array.isArray(v) ? v : v.veterinarians || [];
+        const clinicsArr = Array.isArray(c) ? c : c.clinics || [];
 
+        setPets(petsArr);
+        setVets(vetsArr);
+        setClinics(clinicsArr);
 
-        if (p?.length > 0) {
-          setForm(f => ({ ...f, pet_id: p[0].id }));
+        if (petsArr.length > 0) {
+          setForm(f => ({ ...f, pet_id: petsArr[0].id }));
         }
       } catch (err) {
         console.error(err);
@@ -54,7 +57,15 @@ setClinics(Array.isArray(c) ? c : c.clinics || []);
     e.preventDefault();
 
     if (!form.pet_id || !form.vet_id || !form.date) {
-      return toast.error("Completa los campos obligatorios");
+      toast.error("Completa los campos obligatorios");
+      return;
+    }
+
+    const appointmentDate = new Date(form.date);
+
+    if (appointmentDate < new Date()) {
+      toast.error("❌ No puedes crear citas en fechas pasadas");
+      return;
     }
 
     try {
@@ -62,8 +73,7 @@ setClinics(Array.isArray(c) ? c : c.clinics || []);
       toast.success("Cita creada con éxito ✅");
 
       setForm(f => ({ ...f, date: "", reason: "" }));
-
-      onCreated(); // refrescar lista
+      onCreated();
     } catch (err) {
       console.error(err);
       toast.error("No se pudo crear la cita");
@@ -75,6 +85,7 @@ setClinics(Array.isArray(c) ? c : c.clinics || []);
       <h2 className="text-xl font-bold mb-4">Nueva cita</h2>
 
       <form onSubmit={handleSubmit} className="space-y-3">
+
         {/* Mascota */}
         <select
           className="w-full border p-2 rounded"
@@ -121,6 +132,7 @@ setClinics(Array.isArray(c) ? c : c.clinics || []);
           type="datetime-local"
           className="w-full border p-2 rounded"
           value={form.date}
+          min={new Date().toISOString().slice(0, 16)}
           onChange={e => setForm({ ...form, date: e.target.value })}
         />
 
