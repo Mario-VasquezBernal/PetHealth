@@ -5,7 +5,10 @@ const config: CapacitorConfig = {
   appName: 'PetHealth',
   webDir: 'dist',
   server: {
-    cleartext: false
+    cleartext: false,
+    allowNavigation: [
+      'pethealth-production.up.railway.app'
+    ]
   }
 };
 

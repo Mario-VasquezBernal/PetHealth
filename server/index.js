@@ -1,4 +1,4 @@
-console.log("✅ RATINGS ROUTER FILE LOADED");
+
 const express = require('express');
 const cors = require('cors');
 const initCronJobs = require('./jobs/cronJobs');
@@ -21,6 +21,12 @@ console.log('🌐 Frontend URL:', process.env.FRONTEND_URL || 'NO configurada (u
 // ========================================
 // MIDDLEWARE
 // ========================================
+app.post('/test', (req, res) => {
+  console.log('🔥 BODY RECIBIDO:', req.body);
+  res.json({ ok: true, body: req.body });
+});
+
+
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],

@@ -5,6 +5,22 @@ const authorization = require('../middleware/authorization');
 const { body, validationResult } = require('express-validator');
 
 // ==============================
+// Helper para manejar validaciones
+// ==============================
+const handleValidation = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    console.error('❌ Validation error:', errors.array());
+    res.status(400).json({ error: errors.array()[0].msg });
+    return true;
+  }
+  return false;
+};
+
+// Regex tolerante para móviles / Capacitor
+const SAFE_TEXT_REGEX = /^[\p{L}\p{N}\s.'-]+$/u;
+
+// ==============================
 // GET todos los veterinarios del usuario
 // ==============================
 router.get('/', authorization, async (req, res) => {
@@ -21,7 +37,7 @@ router.get('/', authorization, async (req, res) => {
 
     res.json({ veterinarians: result.rows });
   } catch (error) {
-    console.error('Error obteniendo veterinarios:', error);
+    console.error('❌ Error obteniendo veterinarios:', error);
     res.status(500).json({ error: 'Error al obtener veterinarios' });
   }
 });
@@ -60,9 +76,8 @@ router.get('/:id', authorization, async (req, res) => {
       veterinarian: vetResult.rows[0],
       recent_ratings: ratingsResult.rows
     });
-
   } catch (error) {
-    console.error('Error obteniendo veterinario:', error);
+    console.error('❌ Error obteniendo veterinario:', error);
     res.status(500).json({ error: 'Error al obtener veterinario' });
   }
 });
@@ -70,125 +85,126 @@ router.get('/:id', authorization, async (req, res) => {
 // ==============================
 // CREATE veterinario
 // ==============================
-router.post('/',
-[
-  authorization,
+router.post(
+  '/',
+  [
+    authorization,
 
-  body('name')
-    .trim()
-    .notEmpty().withMessage('El nombre es obligatorio')
-    .isLength({ min: 3 }).withMessage('El nombre debe tener mínimo 3 caracteres')
-    .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s.]+$/)
-    .withMessage('El nombre solo puede contener letras y espacios'),
+    body('name')
+      .trim()
+      .notEmpty().withMessage('El nombre es obligatorio')
+      .isLength({ min: 3 }).withMessage('El nombre debe tener mínimo 3 caracteres')
+      .matches(SAFE_TEXT_REGEX).withMessage('El nombre contiene caracteres inválidos'),
 
-  body('specialty')
-    .optional({ checkFalsy: true })
-    .trim()
-    .isLength({ min: 3 }).withMessage('Especialidad inválida')
-    .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/)
-    .withMessage('La especialidad solo puede contener letras'),
+    body('specialty')
+      .optional({ checkFalsy: true })
+      .trim()
+      .isLength({ min: 3 }).withMessage('Especialidad inválida')
+      .matches(SAFE_TEXT_REGEX).withMessage('La especialidad contiene caracteres inválidos'),
 
-  body('phone')
-    .optional({ checkFalsy: true })
-    .matches(/^[0-9]{10}$/)
-    .withMessage('El teléfono debe tener 10 dígitos'),
+    body('phone')
+      .optional({ checkFalsy: true })
+      .matches(/^[0-9]{10}$/).withMessage('El teléfono debe tener 10 dígitos'),
 
-  body('email')
-    .optional({ checkFalsy: true })
-    .isEmail()
-    .withMessage('Email inválido')
-    .normalizeEmail()
+    body('email')
+      .optional({ checkFalsy: true })
+      .isEmail().withMessage('Email inválido')
+      .normalizeEmail()
+  ],
+  async (req, res) => {
+    try {
+      if (handleValidation(req, res)) return;
 
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ error: errors.array()[0].msg });
+      const { name, specialty, phone, email } = req.body;
+
+      const result = await pool.query(
+        `INSERT INTO veterinarians (name, specialty, phone, email, user_id)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING *`,
+        [
+          name,
+          specialty || null,
+          phone || null,
+          email || null,
+          req.user.id
+        ]
+      );
+
+      res.status(201).json({ veterinarian: result.rows[0] });
+    } catch (error) {
+      console.error('❌ Error creando veterinario:', error);
+      res.status(500).json({ error: 'Error al crear veterinario' });
     }
-
-    const { name, specialty, phone, email } = req.body;
-
-    const result = await pool.query(
-      `INSERT INTO veterinarians (name, specialty, phone, email, user_id)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
-      [name, specialty || null, phone || null, email || null, req.user.id]
-    );
-
-    res.status(201).json({ veterinarian: result.rows[0] });
-
-  } catch (error) {
-    console.error('Error creando veterinario:', error);
-    res.status(500).json({ error: 'Error al crear veterinario' });
   }
-});
+);
 
 // ==============================
 // UPDATE veterinario
 // ==============================
-router.put('/:id',
-[
-  authorization,
+router.put(
+  '/:id',
+  [
+    authorization,
 
-  body('name')
-    .trim()
-    .notEmpty().withMessage('El nombre es obligatorio')
-    .isLength({ min: 3 }).withMessage('El nombre debe tener mínimo 3 caracteres')
-    .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s.]+$/)
-    .withMessage('El nombre solo puede contener letras y espacios'),
+    body('name')
+      .trim()
+      .notEmpty().withMessage('El nombre es obligatorio')
+      .isLength({ min: 3 }).withMessage('El nombre debe tener mínimo 3 caracteres')
+      .matches(SAFE_TEXT_REGEX).withMessage('El nombre contiene caracteres inválidos'),
 
-  body('specialty')
-    .optional({ checkFalsy: true })
-    .trim()
-    .isLength({ min: 3 }).withMessage('Especialidad inválida')
-    .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/)
-    .withMessage('La especialidad solo puede contener letras'),
+    body('specialty')
+      .optional({ checkFalsy: true })
+      .trim()
+      .isLength({ min: 3 }).withMessage('Especialidad inválida')
+      .matches(SAFE_TEXT_REGEX).withMessage('La especialidad contiene caracteres inválidos'),
 
-  body('phone')
-    .optional({ checkFalsy: true })
-    .matches(/^[0-9]{10}$/)
-    .withMessage('El teléfono debe tener 10 dígitos'),
+    body('phone')
+      .optional({ checkFalsy: true })
+      .matches(/^[0-9]{10}$/).withMessage('El teléfono debe tener 10 dígitos'),
 
-  body('email')
-    .optional({ checkFalsy: true })
-    .isEmail()
-    .withMessage('Email inválido')
-    .normalizeEmail()
+    body('email')
+      .optional({ checkFalsy: true })
+      .isEmail().withMessage('Email inválido')
+      .normalizeEmail()
+  ],
+  async (req, res) => {
+    try {
+      if (handleValidation(req, res)) return;
 
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ error: errors.array()[0].msg });
+      const { id } = req.params;
+      const { name, specialty, phone, email } = req.body;
+
+      const checkOwnership = await pool.query(
+        'SELECT id FROM veterinarians WHERE id = $1 AND user_id = $2',
+        [id, req.user.id]
+      );
+
+      if (checkOwnership.rows.length === 0) {
+        return res.status(404).json({ error: 'Veterinario no encontrado o no autorizado' });
+      }
+
+      const result = await pool.query(
+        `UPDATE veterinarians
+         SET name = $1, specialty = $2, phone = $3, email = $4
+         WHERE id = $5 AND user_id = $6
+         RETURNING *`,
+        [
+          name,
+          specialty || null,
+          phone || null,
+          email || null,
+          id,
+          req.user.id
+        ]
+      );
+
+      res.json({ veterinarian: result.rows[0] });
+    } catch (error) {
+      console.error('❌ Error actualizando veterinario:', error);
+      res.status(500).json({ error: 'Error al actualizar veterinario' });
     }
-
-    const { id } = req.params;
-    const { name, specialty, phone, email } = req.body;
-
-    const checkOwnership = await pool.query(
-      'SELECT id FROM veterinarians WHERE id = $1 AND user_id = $2',
-      [id, req.user.id]
-    );
-
-    if (checkOwnership.rows.length === 0) {
-      return res.status(404).json({ error: 'Veterinario no encontrado o no autorizado' });
-    }
-
-    const result = await pool.query(
-      `UPDATE veterinarians
-       SET name = $1, specialty = $2, phone = $3, email = $4
-       WHERE id = $5 AND user_id = $6
-       RETURNING *`,
-      [name, specialty || null, phone || null, email || null, id, req.user.id]
-    );
-
-    res.json({ veterinarian: result.rows[0] });
-
-  } catch (error) {
-    console.error('Error actualizando veterinario:', error);
-    res.status(500).json({ error: 'Error al actualizar veterinario' });
   }
-});
+);
 
 // ==============================
 // DELETE veterinario
@@ -207,9 +223,8 @@ router.delete('/:id', authorization, async (req, res) => {
     }
 
     res.json({ message: 'Veterinario eliminado exitosamente' });
-
   } catch (error) {
-    console.error('Error eliminando veterinario:', error);
+    console.error('❌ Error eliminando veterinario:', error);
     res.status(500).json({ error: 'Error al eliminar veterinario' });
   }
 });
