@@ -1,21 +1,96 @@
+// ============================================
+// SERVER/ROUTES/VETERINARIANS.JS
+// ============================================
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const authorization = require('../middleware/authorization');
 const { body, validationResult } = require('express-validator');
 
-// ==============================
-// GET todos los veterinarios del usuario
-// ==============================
+// =======================================================
+// 1. RUTAS PÚBLICAS / DIRECTORIO (Para usuarios normales)
+// =======================================================
+
+// GET: Directorio completo (Ranking)
+router.get('/directory/all', authorization, async (req, res) => {
+  try {
+    // Usamos ::text para evitar errores de tipo UUID vs INTEGER en el JOIN
+    const result = await pool.query(`
+      SELECT 
+        v.id, 
+        v.name, 
+        v.specialty, 
+        v.phone,
+        v.email,
+        c.name as clinic_name,
+        c.latitude,
+        c.longitude,
+        COALESCE(v.average_rating, 0) as average_rating,
+        COALESCE(v.total_ratings, 0) as total_ratings
+      FROM veterinarians v
+      LEFT JOIN clinics c ON v.clinic_id::text = c.id::text 
+      ORDER BY average_rating DESC, total_ratings DESC
+    `);
+    
+    // Enviamos el objeto exacto que espera el frontend
+    res.json({ veterinarians: result.rows });
+    
+  } catch (error) {
+    console.error('Error cargando directorio:', error);
+    res.status(500).json({ error: 'Error al cargar directorio' });
+  }
+});
+
+// GET: Perfil detallado
+router.get('/directory/profile/:id', authorization, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Datos del Doctor (Casting ::text por seguridad)
+    const vetInfo = await pool.query(`
+      SELECT v.*, c.name as clinic_name, c.address as clinic_address
+      FROM veterinarians v
+      LEFT JOIN clinics c ON v.clinic_id::text = c.id::text
+      WHERE v.id = $1
+    `, [id]);
+
+    if (vetInfo.rows.length === 0) return res.status(404).json({ message: 'Doctor no encontrado' });
+
+    // Reseñas
+    const reviews = await pool.query(`
+      SELECT r.id, r.rating, r.comment, r.created_at, u.full_name as user_name
+      FROM veterinarian_ratings r
+      JOIN users u ON r.user_id = u.id
+      WHERE r.veterinarian_id = $1
+      ORDER BY r.created_at DESC
+      LIMIT 10
+    `, [id]);
+
+    res.json({ veterinarian: vetInfo.rows[0], reviews: reviews.rows });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error cargando perfil' });
+  }
+});
+
+
+// =======================================================
+// 2. RUTAS DE GESTIÓN (ADMIN)
+// =======================================================
+
+// GET: Mis veterinarios (Gestión)
 router.get('/', authorization, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT *,
-       COALESCE(average_rating, 0) as average_rating,
-       COALESCE(total_ratings, 0) as total_ratings
-       FROM veterinarians
-       WHERE user_id = $1
-       ORDER BY name ASC`,
+      `SELECT v.*, 
+       c.name as clinic_name,
+       COALESCE(v.average_rating, 0) as average_rating,
+       COALESCE(v.total_ratings, 0) as total_ratings
+       FROM veterinarians v
+       LEFT JOIN clinics c ON v.clinic_id::text = c.id::text
+       WHERE v.user_id = $1
+       ORDER BY v.name ASC`,
       [req.user.id]
     );
 
@@ -26,191 +101,84 @@ router.get('/', authorization, async (req, res) => {
   }
 });
 
-// ==============================
-// GET veterinario por ID
-// ==============================
+// GET: Veterinario por ID
 router.get('/:id', authorization, async (req, res) => {
   try {
     const { id } = req.params;
-
     const vetResult = await pool.query(
-      `SELECT *,
-       COALESCE(average_rating, 0) as average_rating,
-       COALESCE(total_ratings, 0) as total_ratings
-       FROM veterinarians
-       WHERE id = $1 AND user_id = $2`,
+      `SELECT v.*, c.name as clinic_name 
+       FROM veterinarians v 
+       LEFT JOIN clinics c ON v.clinic_id::text = c.id::text 
+       WHERE v.id = $1 AND v.user_id = $2`,
       [id, req.user.id]
     );
-
-    if (vetResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Veterinario no encontrado' });
-    }
-
-    const ratingsResult = await pool.query(
-      `SELECT r.id, r.rating, r.comment, r.created_at, u.full_name as user_name
-       FROM veterinarian_ratings r
-       JOIN users u ON r.user_id = u.id
-       WHERE r.veterinarian_id = $1
-       ORDER BY r.created_at DESC
-       LIMIT 5`,
-      [id]
-    );
-
-    res.json({
-      veterinarian: vetResult.rows[0],
-      recent_ratings: ratingsResult.rows
-    });
-
+    if (vetResult.rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
+    res.json({ veterinarian: vetResult.rows[0] });
   } catch (error) {
-    console.error('Error obteniendo veterinario:', error);
-    res.status(500).json({ error: 'Error al obtener veterinario' });
+    res.status(500).json({ error: 'Error servidor' });
   }
 });
 
-// ==============================
-// CREATE veterinario
-// ==============================
-router.post('/',
-[
+// CREATE: Crear veterinario
+router.post('/', [
   authorization,
-
-  body('name')
-    .trim()
-    .notEmpty().withMessage('El nombre es obligatorio')
-    .isLength({ min: 3 }).withMessage('El nombre debe tener mínimo 3 caracteres')
-    .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s.]+$/)
-    .withMessage('El nombre solo puede contener letras y espacios'),
-
-  body('specialty')
-    .optional({ checkFalsy: true })
-    .trim()
-    .isLength({ min: 3 }).withMessage('Especialidad inválida')
-    .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/)
-    .withMessage('La especialidad solo puede contener letras'),
-
-  body('phone')
-    .optional({ checkFalsy: true })
-    .matches(/^[0-9]{10}$/)
-    .withMessage('El teléfono debe tener 10 dígitos'),
-
-  body('email')
-    .optional({ checkFalsy: true })
-    .isEmail()
-    .withMessage('Email inválido')
-    .normalizeEmail()
-
+  body('name').trim().notEmpty().withMessage('Nombre obligatorio'),
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ error: errors.array()[0].msg });
-    }
+    if (!errors.isEmpty()) return res.status(400).json({ error: errors.array()[0].msg });
 
-    const { name, specialty, phone, email } = req.body;
+    const { name, specialty, phone, email, clinic_id } = req.body;
+    
+    const finalClinicId = (clinic_id === 'independent' || !clinic_id) ? null : clinic_id;
 
     const result = await pool.query(
-      `INSERT INTO veterinarians (name, specialty, phone, email, user_id)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
-      [name, specialty || null, phone || null, email || null, req.user.id]
+      `INSERT INTO veterinarians (name, specialty, phone, email, clinic_id, user_id)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [name, specialty || null, phone || null, email || null, finalClinicId, req.user.id]
     );
 
     res.status(201).json({ veterinarian: result.rows[0] });
-
   } catch (error) {
-    console.error('Error creando veterinario:', error);
-    res.status(500).json({ error: 'Error al crear veterinario' });
+    console.error('Error creando:', error);
+    res.status(500).json({ error: 'Error al crear' });
   }
 });
 
-// ==============================
-// UPDATE veterinario
-// ==============================
-router.put('/:id',
-[
+// UPDATE: Editar
+router.put('/:id', [
   authorization,
-
-  body('name')
-    .trim()
-    .notEmpty().withMessage('El nombre es obligatorio')
-    .isLength({ min: 3 }).withMessage('El nombre debe tener mínimo 3 caracteres')
-    .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s.]+$/)
-    .withMessage('El nombre solo puede contener letras y espacios'),
-
-  body('specialty')
-    .optional({ checkFalsy: true })
-    .trim()
-    .isLength({ min: 3 }).withMessage('Especialidad inválida')
-    .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/)
-    .withMessage('La especialidad solo puede contener letras'),
-
-  body('phone')
-    .optional({ checkFalsy: true })
-    .matches(/^[0-9]{10}$/)
-    .withMessage('El teléfono debe tener 10 dígitos'),
-
-  body('email')
-    .optional({ checkFalsy: true })
-    .isEmail()
-    .withMessage('Email inválido')
-    .normalizeEmail()
-
+  body('name').trim().notEmpty(),
 ], async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ error: errors.array()[0].msg });
-    }
-
     const { id } = req.params;
-    const { name, specialty, phone, email } = req.body;
+    const { name, specialty, phone, email, clinic_id } = req.body;
+    
+    const check = await pool.query('SELECT id FROM veterinarians WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+    if (check.rows.length === 0) return res.status(404).json({ error: 'No autorizado' });
 
-    const checkOwnership = await pool.query(
-      'SELECT id FROM veterinarians WHERE id = $1 AND user_id = $2',
-      [id, req.user.id]
-    );
-
-    if (checkOwnership.rows.length === 0) {
-      return res.status(404).json({ error: 'Veterinario no encontrado o no autorizado' });
-    }
+    const finalClinicId = (clinic_id === 'independent' || !clinic_id) ? null : clinic_id;
 
     const result = await pool.query(
-      `UPDATE veterinarians
-       SET name = $1, specialty = $2, phone = $3, email = $4
-       WHERE id = $5 AND user_id = $6
-       RETURNING *`,
-      [name, specialty || null, phone || null, email || null, id, req.user.id]
+      `UPDATE veterinarians SET name = $1, specialty = $2, phone = $3, email = $4, clinic_id = $5 
+       WHERE id = $6 RETURNING *`,
+      [name, specialty, phone, email, finalClinicId, id]
     );
-
     res.json({ veterinarian: result.rows[0] });
-
   } catch (error) {
-    console.error('Error actualizando veterinario:', error);
-    res.status(500).json({ error: 'Error al actualizar veterinario' });
+    res.status(500).json({ error: 'Error al actualizar' });
   }
 });
 
-// ==============================
-// DELETE veterinario
-// ==============================
+// DELETE: Eliminar
 router.delete('/:id', authorization, async (req, res) => {
   try {
     const { id } = req.params;
-
-    const result = await pool.query(
-      'DELETE FROM veterinarians WHERE id = $1 AND user_id = $2 RETURNING *',
-      [id, req.user.id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Veterinario no encontrado o no autorizado' });
-    }
-
-    res.json({ message: 'Veterinario eliminado exitosamente' });
-
+    const result = await pool.query('DELETE FROM veterinarians WHERE id = $1 AND user_id = $2 RETURNING *', [id, req.user.id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
+    res.json({ message: 'Eliminado' });
   } catch (error) {
-    console.error('Error eliminando veterinario:', error);
-    res.status(500).json({ error: 'Error al eliminar veterinario' });
+    res.status(500).json({ error: 'Error al eliminar' });
   }
 });
 
