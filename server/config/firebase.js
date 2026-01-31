@@ -1,15 +1,19 @@
 const admin = require('firebase-admin');
 
-if (!admin.apps.length) {
+let serviceAccount;
 
-  let serviceAccount;
-
-  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  try {
     serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-  } else {
-    throw new Error('FIREBASE_SERVICE_ACCOUNT no está definido');
+  } catch (err) {
+    console.error('❌ Error parseando FIREBASE_SERVICE_ACCOUNT');
+    throw err;
   }
+} else {
+  throw new Error('FIREBASE_SERVICE_ACCOUNT no está definido');
+}
 
+if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
   });
