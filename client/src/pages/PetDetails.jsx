@@ -1,21 +1,7 @@
-// ============================================
-// PETDETAILS.JSX
-// ============================================
-// Página de detalles completos de una mascota específica
-// Muestra foto, información básica (edad, peso, género, alergias)
-// Sistema de tabs con 3 secciones:
-//   1. RESUMEN: Estadísticas (última consulta, total de visitas), gráfico de predicción de peso, análisis de riesgo de salud
-//   2. CÓDIGO QR: Generador de QR para acceso veterinario temporal
-//   3. HISTORIAL: Lista completa de registros médicos (consultas, vacunas, tratamientos)
-// Botones de acción: Editar mascota, Eliminar mascota
-// Botón de actualizar datos (refresca información sin recargar página)
-// Cálculo automático de edad desde fecha de nacimiento
-// Imagen por defecto según especie si no tiene foto
-// ============================================
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+
 import Sidebar from '../components/Sidebar';
 import MobileHeader from '../components/MobileHeader';
 import { getPetById, deletePetFromStorage, getMedicalRecords, getUserProfile } from '../dataManager';
@@ -24,7 +10,7 @@ import MedicalHistory from '../components/MedicalHistory';
 import WeightPrediction from '../components/WeightPrediction';
 import HealthRiskCalculator from '../components/HealthRiskCalculator';
 import HealthAIPredictor from '../components/HealthAIPredictor';
-
+import StyledQRCard from '../components/StyledQRCard';
 
 import { 
   Calendar, 
@@ -44,14 +30,17 @@ import {
 } from 'lucide-react';
 
 const PetDetails = () => {
+
   const { id } = useParams();
   const navigate = useNavigate();
+
   const [user, setUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pet, setPet] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('summary');
+
   const [medicalStats, setMedicalStats] = useState({
     totalRecords: 0,
     lastVisit: null
@@ -177,12 +166,7 @@ const PetDetails = () => {
           <div className="text-center">
             <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Mascota no encontrada</h2>
-            <button 
-              onClick={() => navigate('/home')}
-              className="text-blue-600 hover:underline"
-            >
-              Volver al inicio
-            </button>
+            <button onClick={() => navigate('/home')} className="text-blue-600 hover:underline">Volver al inicio</button>
           </div>
         </div>
       </div>
@@ -191,22 +175,11 @@ const PetDetails = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      
-      <Sidebar 
-        user={user}
-        sidebarOpen={sidebarOpen}
-        setSidebarOpen={setSidebarOpen}
-        onNewPet={null}
-      />
+      <Sidebar user={user} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} onNewPet={null} />
 
       <div className="flex-1 lg:ml-72">
-        
-        <MobileHeader 
-          onMenuClick={() => setSidebarOpen(true)}
-          onNewPet={null}
-        />
+        <MobileHeader onMenuClick={() => setSidebarOpen(true)} onNewPet={null} />
 
-        {/* Header Desktop */}
         <div className="hidden lg:block bg-white border-b border-gray-100">
           <div className="px-8 py-5 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -217,78 +190,60 @@ const PetDetails = () => {
         </div>
 
         <main className="px-4 lg:px-8 py-8">
-          
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-            
-            {/* Columna Izquierda: Info de la Mascota */}
+
+            {/* COLUMNA IZQUIERDA */}
             <div className="lg:col-span-1 space-y-4">
-              
-              {/* Card de Imagen */}
+
+              {/* tarjeta mascota */}
               <div className="bg-white rounded-3xl overflow-hidden shadow-xl border border-gray-100">
                 <div className="relative aspect-square bg-gradient-to-br from-gray-100 to-gray-50">
                   <img 
                     src={pet.photo_url || getDefaultImage(pet.type || pet.species)} 
                     alt={pet.name}
                     className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.target.src = getDefaultImage(pet.type || pet.species);
-                    }}
+                    onError={(e) => { e.target.src = getDefaultImage(pet.type || pet.species); }}
                   />
                   <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-semibold text-blue-700 border border-blue-200 shadow-md">
                     {pet.type || pet.species}
                   </div>
                 </div>
-                
                 <div className="p-6">
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">{pet.name}</h1>
                   <p className="text-gray-600 text-lg mb-4">{pet.breed || 'Raza mixta'}</p>
-                  
                   <div className="flex gap-2">
-                    <button 
-                      type="button"
-                      onClick={() => navigate(`/pets/${id}/edit`)}
-                      className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-medium transition-all"
-                    >
-                      <Edit className="w-4 h-4" strokeWidth={2} />
-                      Editar
+                    <button onClick={() => navigate(`/pets/${id}/edit`)} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-medium transition-all">
+                      <Edit className="w-4 h-4" /> Editar
                     </button>
-                    <button 
-                      type="button"
-                      onClick={handleDelete}
-                      className="flex-1 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl font-medium transition-all"
-                    >
-                      <Trash2 className="w-4 h-4" strokeWidth={2} />
-                      Eliminar
+                    <button onClick={handleDelete} className="flex-1 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl font-medium transition-all">
+                      <Trash2 className="w-4 h-4" /> Eliminar
                     </button>
                   </div>
                 </div>
               </div>
 
-              {/* Card de Info Básica */}
+              {/* info básica */}
               <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6">
                 <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <Stethoscope className="w-5 h-5 text-blue-600" strokeWidth={2} />
-                  Información Básica
+                  <Stethoscope className="w-5 h-5 text-blue-600" /> Información Básica
                 </h3>
+
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600 text-sm flex items-center gap-2">
-                      <Cake className="w-4 h-4" />
-                      Edad
-                    </span>
+                    <span className="text-gray-600 text-sm flex items-center gap-2"><Cake className="w-4 h-4" /> Edad</span>
                     <span className="font-semibold text-gray-900">{calculateAge(pet.birth_date)}</span>
                   </div>
+
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600 text-sm">Género</span>
                     <span className="font-semibold text-gray-900">{pet.gender}</span>
                   </div>
+
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600 text-sm flex items-center gap-2">
-                      <Weight className="w-4 h-4" />
-                      Peso
-                    </span>
+                    <span className="text-gray-600 text-sm flex items-center gap-2"><Weight className="w-4 h-4" /> Peso</span>
                     <span className="font-semibold text-gray-900">{pet.weight ? `${pet.weight} kg` : 'N/A'}</span>
                   </div>
+
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600 text-sm">Esterilizado</span>
                     <span className="font-semibold text-gray-900">{pet.is_sterilized ? 'Sí' : 'No'}</span>
@@ -298,52 +253,46 @@ const PetDetails = () => {
                 {pet.allergies && (
                   <div className="mt-4 pt-4 border-t border-gray-100">
                     <p className="text-xs font-semibold text-orange-700 mb-1 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      ALERGIAS / NOTAS
+                      <AlertCircle className="w-3 h-3" /> ALERGIAS / NOTAS
                     </p>
-                    <p className="text-sm text-orange-800 bg-orange-50 p-2 rounded-lg">{pet.allergies}</p>
+                    <p className="text-sm text-orange-800 bg-orange-50 p-2 rounded-lg">
+                      {pet.allergies}
+                    </p>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Columna Derecha: Tabs */}
+            {/* COLUMNA DERECHA */}
             <div className="lg:col-span-2 space-y-6">
-              
-              {/* Navegación de Tabs */}
+
+              {/* tabs */}
               <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-2">
                 <div className="grid grid-cols-3 gap-2">
+
                   <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab('summary');
-                      reloadAllData();
-                    }}
+                    onClick={() => setActiveTab('summary')}
                     className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-medium transition-all ${
                       activeTab === 'summary'
                         ? 'bg-blue-600 text-white shadow-lg'
                         : 'text-blue-600 hover:bg-blue-50'
                     }`}
                   >
-                    <Heart className="w-5 h-5" strokeWidth={2} />
-                    <span>Resumen</span>
+                    <Heart className="w-5 h-5" /> Resumen
                   </button>
-                  
+
                   <button
-                    type="button"
-                    onClick={() => setActiveTab('qr')}
+                    onClick={() => setActiveTab("qr")}
                     className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-medium transition-all ${
                       activeTab === 'qr'
                         ? 'bg-blue-600 text-white shadow-lg'
                         : 'text-blue-600 hover:bg-blue-50'
                     }`}
                   >
-                    <QrCode className="w-5 h-5" strokeWidth={2} />
-                    <span>Código QR</span>
+                    <QrCode className="w-5 h-5" /> Pase Médico
                   </button>
 
                   <button
-                    type="button"
                     onClick={() => setActiveTab('history')}
                     className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-medium transition-all ${
                       activeTab === 'history'
@@ -351,37 +300,32 @@ const PetDetails = () => {
                         : 'text-blue-600 hover:bg-blue-50'
                     }`}
                   >
-                    <FileText className="w-5 h-5" strokeWidth={2} />
-                    <span>Historial</span>
+                    <FileText className="w-5 h-5" /> Historial
                   </button>
+
                 </div>
               </div>
 
-              {/* Contenido de Tabs */}
               <div>
-                {/* TAB: RESUMEN */}
+
                 {activeTab === 'summary' && (
                   <div className="space-y-6">
-                    
-                    {/* Botón de actualizar */}
+
                     <div className="flex justify-end">
                       <button
-                        type="button"
                         onClick={reloadAllData}
                         disabled={refreshing}
-                        className="inline-flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-2 rounded-xl border border-blue-200 font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-2 rounded-xl border border-blue-200 font-medium text-sm transition-all disabled:opacity-50"
                       >
-                        <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} strokeWidth={2} />
+                        <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                         {refreshing ? 'Actualizando...' : 'Actualizar datos'}
                       </button>
                     </div>
 
-                    {/* Grid de Estadísticas */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                      
                       <div className="bg-white p-5 rounded-2xl shadow-xl border border-gray-100">
                         <div className="flex items-center gap-2 mb-2">
-                          <Calendar className="w-5 h-5 text-blue-600" strokeWidth={2} />
+                          <Calendar className="w-5 h-5 text-blue-600" />
                           <p className="text-xs font-semibold text-blue-600 uppercase">Última Consulta</p>
                         </div>
                         <p className="text-2xl font-bold text-gray-900">
@@ -391,86 +335,109 @@ const PetDetails = () => {
 
                       <div className="bg-white p-5 rounded-2xl shadow-xl border border-orange-100">
                         <div className="flex items-center gap-2 mb-2">
-                          <Activity className="w-5 h-5 text-orange-600" strokeWidth={2} />
+                          <Activity className="w-5 h-5 text-orange-600" />
                           <p className="text-xs font-semibold text-orange-600 uppercase">Consultas</p>
                         </div>
-                        <p className="text-2xl font-bold text-orange-900">{medicalStats.totalRecords}</p>
+                        <p className="text-2xl font-bold text-orange-900">
+                          {medicalStats.totalRecords}
+                        </p>
                       </div>
 
                       <div className="bg-white p-5 rounded-2xl shadow-xl border border-purple-100">
                         <div className="flex items-center gap-2 mb-2">
-                          <Weight className="w-5 h-5 text-purple-600" strokeWidth={2} />
+                          <Weight className="w-5 h-5 text-purple-600" />
                           <p className="text-xs font-semibold text-purple-600 uppercase">Peso Actual</p>
                         </div>
-                        <p className="text-2xl font-bold text-purple-900">{pet.weight ? `${pet.weight} kg` : 'N/A'}</p>
+                        <p className="text-2xl font-bold text-purple-900">
+                          {pet.weight ? `${pet.weight} kg` : 'N/A'}
+                        </p>
                       </div>
 
                       <div className="bg-white p-5 rounded-2xl shadow-xl border border-cyan-100">
                         <div className="flex items-center gap-2 mb-2">
-                          <Cake className="w-5 h-5 text-cyan-600" strokeWidth={2} />
+                          <Cake className="w-5 h-5 text-cyan-600" />
                           <p className="text-xs font-semibold text-cyan-600 uppercase">Edad</p>
                         </div>
-                        <p className="text-lg font-bold text-cyan-900">{calculateAge(pet.birth_date)}</p>
+                        <p className="text-lg font-bold text-cyan-900">
+                          {calculateAge(pet.birth_date)}
+                        </p>
                       </div>
                     </div>
 
-                    {/* PREDICCIÓN DE PESO */}
                     <WeightPrediction petId={id} />
-
-                    {/* ANÁLISIS DE RIESGO */}
                     <HealthRiskCalculator pet={pet} />
-                    {/* IA PREDICTIVA DE SALUD */}
-<HealthAIPredictor petId={pet.id} />
+                    <HealthAIPredictor petId={pet.id} />
 
-
-                    {/* Alerta de Alergias */}
-                    {pet.allergies && (
-                      <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-xl">
-                        <div className="flex items-start gap-3">
-                          <AlertCircle className="w-6 h-6 text-orange-600 flex-shrink-0 mt-0.5" strokeWidth={2} />
-                          <div>
-                            <h4 className="font-bold text-orange-900 mb-1">⚠️ Alergias / Condiciones Médicas</h4>
-                            <p className="text-orange-800">{pet.allergies}</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Info Card */}
+                    {/* QR SOLO LECTURA */}
                     <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6">
-                      <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <TrendingUp className="w-6 h-6 text-blue-600" strokeWidth={2} />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-gray-900 mb-2">Dashboard de {pet.name}</h3>
+                      <div className="flex flex-col md:flex-row items-center gap-6">
+
+                        <div className="flex-1">
+                          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                            <TrendingUp className="w-6 h-6 text-blue-600" />
+                          </div>
+                          <h3 className="font-bold text-gray-900 mb-2">
+                            QR de Identificación
+                          </h3>
                           <p className="text-gray-600 mb-4">
-                            Aquí puedes ver un resumen rápido del estado de salud de {pet.name}. 
-                            Para registrar una nueva consulta, genera un código QR y muéstralo al veterinario.
+                            Muestra este código para que cualquier profesional lea el historial de {pet.name}.
                           </p>
-                          <button
-                            type="button"
-                            onClick={() => setActiveTab('qr')}
-                            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-medium transition-all"
-                          >
-                            <QrCode className="w-5 h-5" strokeWidth={2} />
-                            Generar Código QR
-                          </button>
                         </div>
+
+                        <StyledQRCard
+                          title="QR de identificación"
+                          subtitle="Acceso al historial en modo lectura"
+                          mode="READ_ONLY"
+                          petName={pet.name}
+                        >
+                          <QRGenerator
+                            petId={id}
+                            petName={pet.name}
+                            mode="READ_ONLY"
+                          />
+                        </StyledQRCard>
+
                       </div>
                     </div>
+
                   </div>
                 )}
 
-                {/* TAB: CÓDIGO QR */}
                 {activeTab === 'qr' && (
-                  <QRGenerator petId={id} petName={pet.name} />
+                  <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 text-center animate-in zoom-in-95 duration-300">
+
+                    <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Stethoscope size={32} />
+                    </div>
+
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                      Configurar Pase Médico
+                    </h2>
+
+                    <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+                      Selecciona el lugar y el médico para generar el acceso de registro de consulta.
+                    </p>
+
+                    <StyledQRCard
+                      title="Pase médico"
+                      subtitle="Seleccione un médico antes de generar el pase"
+                      mode="WRITE"
+                      petName={pet.name}
+                    >
+                      <QRGenerator
+                        petId={id}
+                        petName={pet.name}
+                        mode="WRITE"
+                      />
+                    </StyledQRCard>
+
+                  </div>
                 )}
 
-                {/* TAB: HISTORIAL */}
                 {activeTab === 'history' && (
                   <MedicalHistory petId={id} />
                 )}
+
               </div>
             </div>
           </div>

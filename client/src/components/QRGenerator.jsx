@@ -1,294 +1,260 @@
-// ============================================
-// QRGENERATOR.JSX
-// ============================================
-// Genera código QR temporal (15 minutos) para acceso veterinario sin login
-// Muestra imagen QR, contador regresivo de expiración y botones de acción
-// Permite: descargar QR como imagen PNG, copiar URL de acceso directo, renovar QR
-// Estado vacío muestra botón para generar, estado con QR muestra imagen + timer + acciones
-// Timer actualizado cada segundo, marca "⚠️ Expirado" cuando llega a 0
-// QR funciona escaneándolo o compartiendo el vetAccessUrl
-// ============================================
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import QRCode from 'react-qr-code'; 
 import { toast } from 'react-toastify';
-import { generateQRCode } from '../dataManager';
-import { QrCode, RefreshCw, Clock, Download, Share2, User, Building2 } from 'lucide-react';
+import { 
+  Download, 
+  Building2, 
+  User, 
+  RefreshCw, 
+  Copy, 
+  Clock
+} from 'lucide-react';
 
-const QRGenerator = ({ petId, petName }) => {
-  const [qrData, setQrData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [loadingOptions, setLoadingOptions] = useState(true);
-  const [timeRemaining, setTimeRemaining] = useState(null);
-  
-  // ✅ NUEVO: Estados para veterinarios y clínicas
-  const [veterinarians, setVeterinarians] = useState([]);
+const QRGenerator = ({ petId, petName, mode = 'READ_ONLY' }) => {
+
   const [clinics, setClinics] = useState([]);
-  const [selectedVet, setSelectedVet] = useState('');
-  const [selectedClinic, setSelectedClinic] = useState('');
+  const [vets, setVets] = useState([]); 
+  const [selectedClinicId, setSelectedClinicId] = useState('');
+  const [selectedVetName, setSelectedVetName] = useState('');
+  const [timestamp, setTimestamp] = useState(null);
 
-  // Cargar opciones al montar el componente
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+  const FRONTEND_URL = window.location.origin;
+
+  /* =========================
+     CARGA DE CLÍNICAS
+  ==========================*/
   useEffect(() => {
-    loadOptions();
-  }, []);
+    if (mode === 'WRITE') {
+      fetch(`${API_URL}/api/public/clinics`)
+        .then(res => res.json())
+        .then(data => setClinics(data || []))
+        .catch(err => console.error("Error clinics:", err));
+    }
+  }, [mode, API_URL]);
 
+  /* =========================
+     VETERINARIOS POR CLÍNICA
+  ==========================*/
   useEffect(() => {
-    if (qrData?.expiresAt) {
-      const interval = setInterval(() => {
-        const now = new Date();
-        const expires = new Date(qrData.expiresAt);
-        const diff = expires - now;
+    if (!selectedClinicId) return;
 
-        if (diff <= 0) {
-          setTimeRemaining('Expirado');
-          clearInterval(interval);
-        } else {
-          const minutes = Math.floor(diff / 60000);
-          const seconds = Math.floor((diff % 60000) / 1000);
-          setTimeRemaining(`${minutes}:${seconds.toString().padStart(2, '0')}`);
-        }
-      }, 1000);
+    // 👉 si es independiente NO entra aquí
+    if (selectedClinicId === 'independent') return;
 
-      return () => clearInterval(interval);
-    }
-  }, [qrData]);
+    fetch(`${API_URL}/api/public/veterinarians/by-clinic/${selectedClinicId}`)
+      .then(res => res.json())
+      .then(data => setVets(data || []))
+      .catch(err => console.error("Error vets:", err));
 
-  // ✅ NUEVO: Cargar veterinarios y clínicas
-  const loadOptions = async () => {
-    try {
-      setLoadingOptions(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/qr/options`, {
+  }, [selectedClinicId, API_URL]);
 
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+  /* =========================
+     VETERINARIOS INDEPENDIENTES
+  ==========================*/
+  useEffect(() => {
+    if (selectedClinicId !== 'independent') return;
 
-      if (!response.ok) throw new Error('Error al cargar opciones');
+    const loadIndependentVets = async () => {
+      try {
+        const token = localStorage.getItem("token");
 
-      const data = await response.json();
-      setVeterinarians(data.veterinarians || []);
-      setClinics(data.clinics || []);
-    } catch (error) {
-      console.error(error);
-      toast.error('Error al cargar veterinarios y clínicas');
-    } finally {
-      setLoadingOptions(false);
-    }
+        const res = await fetch(`${API_URL}/veterinarians`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        const data = await res.json();
+        const list = data.veterinarians || data || [];
+
+        const independents = list.filter(v =>
+          v.clinic_id === 'independent' || !v.clinic_id
+        );
+
+        setVets(independents);
+
+      } catch (error) {
+        console.error(error);
+        toast.error("Error cargando médicos independientes");
+      }
+    };
+
+    loadIndependentVets();
+
+  }, [selectedClinicId, API_URL]);
+
+  const handleClinicChange = (e) => {
+    setSelectedClinicId(e.target.value);
+    setVets([]); 
+    setSelectedVetName('');
   };
 
-  const handleGenerateQR = async () => {
-    // ✅ VALIDACIÓN: Asegurar que se seleccionen vet y clínica
-    if (!selectedVet || !selectedClinic) {
-      toast.warning('⚠️ Debes seleccionar un veterinario y una clínica');
-      return;
+  const qrValue = useMemo(() => {
+
+    if (mode === 'READ_ONLY') {
+      return `${FRONTEND_URL}/medical-history/${petId}`;
     }
 
-    try {
-      setLoading(true);
-      // ✅ NUEVO: Enviar vetId y clinicId
-      const data = await generateQRCode(petId, {
-        vetId: selectedVet,
-        clinicId: selectedClinic
-      });
-      setQrData(data);
-      toast.success('✅ Código QR generado exitosamente');
-    } catch (error) {
-      console.error(error);
-      toast.error(error.message || 'Error al generar código QR');
-    } finally {
-      setLoading(false);
-    }
-  };
+    if (!timestamp) return '';
+
+    const params = new URLSearchParams({
+      clinic_id: selectedClinicId,
+      vet: selectedVetName,
+      expires: (timestamp + (20 * 60 * 1000)).toString(),
+    }).toString();
+    
+    return `${FRONTEND_URL}/vet-access/${petId}?${params}`;
+
+  }, [petId, mode, selectedClinicId, selectedVetName, timestamp, FRONTEND_URL]);
 
   const handleDownloadQR = () => {
-    if (!qrData?.qrImage) return;
-    
-    const link = document.createElement('a');
-    link.href = qrData.qrImage;
-    link.download = `QR-${petName}-${Date.now()}.png`;
-    link.click();
-    toast.info('Código QR descargado');
+
+    const svg = document.getElementById(`qr-code-svg-${mode}`);
+    const svgData = new XMLSerializer().serializeToString(svg);
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+
+    img.onload = () => {
+      canvas.width = img.width; 
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      const link = document.createElement('a');
+      link.download = `Pase-${petName}-${mode}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+
+      toast.success('📸 Código guardado en tu galería');
+    };
+
+    img.src = "data:image/svg+xml;base64," + btoa(svgData);
   };
 
-  const handleCopyLink = () => {
-    if (!qrData?.vetAccessUrl) return;
-    
-    navigator.clipboard.writeText(qrData.vetAccessUrl);
-    toast.success('Enlace copiado al portapapeles');
-  };
-
-  if (loadingOptions) {
-    return (
-      <div className="bg-white rounded-card shadow-card border border-primary-100 p-6">
-        <div className="text-center py-8">
-          <RefreshCw className="w-8 h-8 text-primary-600 animate-spin mx-auto mb-2" />
-          <p className="text-primary-600">Cargando opciones...</p>
-        </div>
-      </div>
-    );
-  }
+  const isRead = mode === 'READ_ONLY';
 
   return (
-    <div className="bg-white rounded-card shadow-card border border-primary-100 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <QrCode className="w-6 h-6 text-primary-600" />
-          <h3 className="text-lg font-bold text-primary-900">Acceso Veterinario</h3>
-        </div>
-        {qrData && timeRemaining && (
-          <div className="flex items-center gap-2 bg-primary-50 px-3 py-1.5 rounded-xl">
-            <Clock className="w-4 h-4 text-primary-600" />
-            <span className={`text-sm font-semibold ${
-              timeRemaining === 'Expirado' ? 'text-red-600' : 'text-primary-700'
-            }`}>
-              {timeRemaining === 'Expirado' ? '⚠️ Expirado' : timeRemaining}
-            </span>
-          </div>
-        )}
-      </div>
+    <div className="w-full max-w-sm mx-auto">
+      {!isRead && !timestamp ? (
 
-      {!qrData ? (
-        <div className="space-y-4">
-          {/* ✅ NUEVO: Selects para Veterinario y Clínica */}
-          <div className="bg-blue-50 p-4 rounded-xl border-2 border-blue-200">
-            <p className="text-sm font-semibold text-blue-900 mb-3">
-              📋 Selecciona el veterinario y clínica que atenderá a {petName}
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-blue-800 mb-2 flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  Veterinario *
-                </label>
-                <select
-                  value={selectedVet}
-                  onChange={(e) => setSelectedVet(e.target.value)}
-                  className="w-full border-2 border-blue-300 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-                >
-                  <option value="">Seleccionar veterinario...</option>
-                  {veterinarians.map(vet => (
-                    <option key={vet.id} value={vet.id}>
-                      {vet.name} {vet.specialty ? `- ${vet.specialty}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
+        /* FORMULARIO DE CONFIGURACIÓN */
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-5 animate-in fade-in slide-in-from-bottom-2">
 
-              <div>
-                <label className="block text-sm font-medium text-blue-800 mb-2 flex items-center gap-2">
-                  <Building2 className="w-4 h-4" />
-                  Clínica *
-                </label>
-                <select
-                  value={selectedClinic}
-                  onChange={(e) => setSelectedClinic(e.target.value)}
-                  className="w-full border-2 border-blue-300 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-                >
-                  <option value="">Seleccionar clínica...</option>
-                  {clinics.map(clinic => (
-                    <option key={clinic.id} value={clinic.id}>
-                      {clinic.name} {clinic.address ? `- ${clinic.address}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          <div className="space-y-4">
+
+            {/* DONDE ES LA ATENCIÓN */}
+            <div className="relative">
+              <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20}/>
+              <select 
+                className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-green-500 transition-all appearance-none"
+                value={selectedClinicId}
+                onChange={handleClinicChange}
+              >
+                <option value="">¿Dónde es la atención?</option>
+                <option value="independent">🏠 Médico Independiente</option>
+                {clinics.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
             </div>
+
+            {/* SELECT DOCTOR (MISMO SELECT, MISMA UI) */}
+            <div
+              className={`relative transition-all ${
+                !selectedClinicId ? 'opacity-30 pointer-events-none' : ''
+              }`}
+            >
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20}/>
+              <select 
+                className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-green-500 transition-all appearance-none"
+                value={selectedVetName}
+                onChange={(e) => setSelectedVetName(e.target.value)}
+              >
+                <option value="">Selecciona al Doctor</option>
+
+                {vets.map(v => (
+                  <option key={v.id} value={v.name}>
+                    {v.name}
+                  </option>
+                ))}
+
+              </select>
+            </div>
+
           </div>
 
-          {/* Botón de generar */}
-          <div className="text-center pt-2">
-            <button
-              type="button"
-              onClick={handleGenerateQR}
-              disabled={loading}
-              className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white px-6 py-3 rounded-xl font-medium shadow-lg transition-all disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <>
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                  Generando...
-                </>
-              ) : (
-                <>
-                  <QrCode className="w-5 h-5" />
-                  Generar Código QR
-                </>
-              )}
-            </button>
-          </div>
+          <button 
+            onClick={() => setTimestamp(Date.now())}
+            disabled={!selectedVetName}
+            className="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-2xl shadow-lg shadow-green-100 transition-all transform active:scale-95 disabled:opacity-50"
+          >
+            Generar Pase Médico
+          </button>
+
         </div>
+
       ) : (
-        <div className="space-y-4">
-          {/* ✅ NUEVO: Mostrar doctor y clínica asignados */}
-          <div className="bg-green-50 p-4 rounded-xl border-2 border-green-200">
-            <p className="text-sm font-semibold text-green-900 mb-2">✅ QR generado para:</p>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <p className="text-green-700 font-medium">Doctor:</p>
-                <p className="text-green-900 font-bold">{qrData.assignedVet?.name}</p>
-              </div>
-              <div>
-                <p className="text-green-700 font-medium">Clínica:</p>
-                <p className="text-green-900 font-bold">{qrData.assignedClinic?.name}</p>
-              </div>
-            </div>
-          </div>
 
-          {/* Imagen QR */}
-          <div className="flex justify-center bg-gradient-to-br from-primary-50 to-white p-6 rounded-xl border-2 border-dashed border-primary-200">
-            <img 
-              src={qrData.qrImage} 
-              alt="Código QR" 
-              className="w-64 h-64 rounded-lg shadow-lg"
+        /* VISTA DEL QR GENERADO */
+        <div className="flex flex-col items-center animate-in zoom-in-95 duration-300">
+
+          <div className={`relative p-6 rounded-[2.5rem] bg-white shadow-2xl border-4 ${isRead ? 'border-blue-50' : 'border-green-50'}`}>
+            <QRCode 
+              id={`qr-code-svg-${mode}`}
+              value={qrValue} 
+              size={180}
+              level="H" 
+              fgColor={isRead ? '#1e40af' : '#15803d'}
+              bgColor="#ffffff"
             />
+
+            {!isRead && (
+              <div className="absolute -top-3 -right-3 bg-red-500 text-white p-2 rounded-full shadow-lg animate-pulse">
+                <Clock size={18} />
+              </div>
+            )}
           </div>
 
-          {/* Instrucciones */}
-          <div className="bg-primary-50 p-4 rounded-xl border border-primary-100">
-            <p className="text-sm text-primary-800 mb-2">
-              <strong>📱 Instrucciones:</strong>
-            </p>
-            <ol className="text-sm text-primary-700 space-y-1 list-decimal list-inside">
-              <li>Muestra este código QR al veterinario</li>
-              <li>El QR ya contiene la info del doctor y clínica</li>
-              <li>El código expira en 24 horas</li>
-            </ol>
-          </div>
+          {!isRead && (
+            <div className="mt-4 flex items-center gap-2 text-red-600 font-bold text-xs uppercase tracking-widest">
+              <RefreshCw size={14} className="animate-spin-slow" />
+              Expira en 20 minutos
+            </div>
+          )}
 
-          {/* Botones de acción */}
-          <div className="grid grid-cols-3 gap-3">
-            <button
-              type="button"
+          <div className="grid grid-cols-2 gap-3 w-full mt-8">
+            <button 
               onClick={handleDownloadQR}
-              className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all"
+              className={`flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-white transition-all hover:brightness-110 shadow-md ${isRead ? 'bg-blue-600' : 'bg-green-600'}`}
             >
-              <Download className="w-4 h-4" />
-              Descargar
+              <Download size={18} /> PNG
             </button>
-            
-            <button
-              type="button"
-              onClick={handleCopyLink}
-              className="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all"
-            >
-              <Share2 className="w-4 h-4" />
-              Copiar Link
-            </button>
-            
-            <button
-              type="button"
+
+            <button 
               onClick={() => {
-                setQrData(null);
-                setSelectedVet('');
-                setSelectedClinic('');
+                navigator.clipboard.writeText(qrValue);
+                toast.success('🔗 Enlace copiado al portapapeles');
               }}
-              className="flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all"
+              className="flex items-center justify-center gap-2 py-4 bg-gray-900 rounded-2xl font-bold text-white transition-all hover:bg-black shadow-md"
             >
-              <RefreshCw className="w-4 h-4" />
-              Nuevo QR
+              <Copy size={18} /> Link
             </button>
           </div>
+
+          <button 
+            onClick={() => {
+              setTimestamp(null);
+              setSelectedClinicId('');
+              setSelectedVetName('');
+              setVets([]);
+            }}
+            className="mt-6 text-gray-400 text-xs font-semibold hover:text-gray-600 transition-colors uppercase tracking-tighter"
+          >
+            ← Volver a configurar
+          </button>
+
         </div>
       )}
     </div>
