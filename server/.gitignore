@@ -3,3 +3,5 @@ node_modules/
 *.sql
 *.dump
 backup*
+server/config/*.json
+server/config/pethealth-f2d3e-firebase-adminsdk-fbsvc-f156ee0d6d.json
