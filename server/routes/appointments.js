@@ -55,25 +55,21 @@ router.get("/", authorization, async (req, res) => {
 // ==========================================
 router.post("/", authorization, async (req, res) => {
   try {
-    // Recibimos los datos
     const { pet_id, veterinarian_id, vet_id, clinic_id, date, reason } = req.body;
 
-    // Aseguramos el ID del veterinario (por si el frontend lo manda con otro nombre)
     const finalVetId = veterinarian_id || vet_id;
 
     if (!pet_id || !finalVetId || !date) {
       return res.status(400).json({ error: "Datos incompletos: Faltan campos obligatorios." });
     }
 
-    // Validar Fecha
     const appointmentDate = new Date(date);
     const now = new Date();
 
     if (isNaN(appointmentDate.getTime())) {
       return res.status(400).json({ error: "Fecha inválida" });
     }
-    
-    // Verificamos que sea dueño de la mascota
+
     const ownership = await pool.query(
       "SELECT id FROM pets WHERE id = $1 AND user_id = $2",
       [pet_id, req.user.id]
@@ -83,12 +79,11 @@ router.post("/", authorization, async (req, res) => {
       return res.status(403).json("No tienes permiso para agendar cita con esta mascota.");
     }
 
-    // ✅ INSERTAR EN LA BD (CORREGIDO: vet_id)
     const newAppointment = await pool.query(
       `INSERT INTO appointments (
           user_id, 
           pet_id, 
-          vet_id,     -- CAMBIADO DE veterinarian_id A vet_id
+          vet_id,
           clinic_id, 
           date, 
           reason,
@@ -99,15 +94,19 @@ router.post("/", authorization, async (req, res) => {
       [req.user.id, pet_id, finalVetId, clinic_id, appointmentDate, reason]
     );
 
-    // Enviar Email (Opcional)
+    // Enviar Email (opcional al crear la cita)
     try {
-      const userResult = await pool.query("SELECT email, full_name FROM users WHERE id = $1", [req.user.id]);
+      const userResult = await pool.query(
+        "SELECT email, full_name FROM users WHERE id = $1",
+        [req.user.id]
+      );
+
       const { email, full_name } = userResult.rows[0] || {};
-      
+
       if (sendEmail && email) {
         const subject = "Cita Agendada - PetHealth";
         const message = `Hola ${full_name || ""}, tu cita ha sido registrada para el ${appointmentDate.toLocaleString()}. Motivo: ${reason || "Control general"}.`;
-        sendEmail(email, subject, message);
+        await sendEmail(email, subject, message);
       }
     } catch (emailErr) {
       console.error("Error enviando email:", emailErr.message);
@@ -116,7 +115,7 @@ router.post("/", authorization, async (req, res) => {
     res.json(newAppointment.rows[0]);
 
   } catch (err) {
-    console.error("🔥 Error SQL al crear cita:", err.message); // Ver esto en la consola negra si falla
+    console.error("🔥 Error SQL al crear cita:", err.message);
     res.status(500).json({ error: "Error del servidor al crear cita. Revisa la consola del servidor." });
   }
 });
@@ -129,10 +128,9 @@ router.delete("/:id", authorization, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Marcamos como cancelada en lugar de borrarla
     await pool.query(
-        "UPDATE appointments SET status = 'Cancelada' WHERE id = $1 AND user_id = $2", 
-        [id, req.user.id]
+      "UPDATE appointments SET status = 'Cancelada' WHERE id = $1 AND user_id = $2",
+      [id, req.user.id]
     );
 
     res.json("Cita cancelada correctamente");
@@ -141,5 +139,96 @@ router.delete("/:id", authorization, async (req, res) => {
     res.status(500).send("Error al cancelar");
   }
 });
+
+
+// ==========================================
+// 4. FINALIZAR CITA (DOCTOR)
+// ==========================================
+router.put("/finish/:id", authorization, async (req, res) => {
+  try {
+
+    const { id } = req.params;
+    const { requires_review, next_review_date } = req.body;
+
+    if (requires_review === true && !next_review_date) {
+      return res.status(400).json({
+        error: "Debe indicar la fecha de la próxima revisión"
+      });
+    }
+
+    const updated = await pool.query(
+      `
+      UPDATE appointments
+      SET
+        requires_review = $1,
+        next_review_date = $2,
+        status = 'Finalizada'
+      WHERE id = $3
+      RETURNING *
+      `,
+      [requires_review, next_review_date || null, id]
+    );
+
+    if (updated.rows.length === 0) {
+      return res.status(404).json({ error: "Cita no encontrada" });
+    }
+
+    // Enviar correo solo si requiere revisión
+    if (requires_review && next_review_date) {
+
+      const info = await pool.query(
+        `
+        SELECT
+          u.email,
+          u.full_name,
+          p.name AS pet_name
+        FROM appointments a
+        JOIN users u ON u.id = a.user_id
+        JOIN pets p ON p.id = a.pet_id
+        WHERE a.id = $1
+        `,
+        [id]
+      );
+
+      const data = info.rows[0];
+
+      if (data?.email) {
+
+        const subject = "Confirmación de próxima revisión - PetHealth";
+
+        const message = `
+Hola ${data.full_name || ""},
+
+El médico ha indicado que la consulta de tu mascota ${data.pet_name}
+requiere una nueva revisión.
+
+📅 Fecha de la próxima revisión:
+${new Date(next_review_date).toLocaleString()}
+
+Puedes ver el detalle ingresando a la aplicación.
+
+PetHealth
+        `;
+
+        try {
+          await sendEmail(
+            data.email,
+            subject,
+            message
+          );
+        } catch (mailErr) {
+          console.error("Error enviando correo de revisión:", mailErr.message);
+        }
+      }
+    }
+
+    res.json(updated.rows[0]);
+
+  } catch (err) {
+    console.error("Error al finalizar cita:", err.message);
+    res.status(500).json({ error: "Error al finalizar la cita" });
+  }
+});
+
 
 module.exports = router;

@@ -5,6 +5,11 @@ import { toast } from 'react-toastify';
 import { loginUser } from '../dataManager';
 import { Mail, Lock } from 'lucide-react';
 
+import { Capacitor } from "@capacitor/core";
+import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
+import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "../firebase";
+
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const Login = () => {
@@ -76,6 +81,53 @@ const Login = () => {
     }
   };
 
+  // ===============================
+  // GOOGLE LOGIN (nuevo)
+  // ===============================
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
+
+      let idToken;
+
+      if (Capacitor.isNativePlatform()) {
+        const result = await FirebaseAuthentication.signInWithGoogle();
+
+        if (!result.credential?.idToken) {
+          throw new Error("No se pudo obtener el token de Google");
+        }
+
+        idToken = result.credential.idToken;
+
+      } else {
+        const result = await signInWithPopup(auth, googleProvider);
+        idToken = await result.user.getIdToken();
+      }
+
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Error al autenticar con Google");
+      }
+
+      localStorage.setItem("token", data.token);
+      toast.success("¡Bienvenido!");
+      navigate("/home");
+
+    } catch (error) {
+      console.error(error);
+      toast.error(error.message || "Error al iniciar sesión con Google");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -137,6 +189,27 @@ const Login = () => {
             >
               {loading ? 'Ingresando...' : 'Iniciar sesión'}
             </button>
+
+            {/* Divider */}
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t"></div>
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-gray-400">o</span>
+              </div>
+            </div>
+
+            {/* Google button */}
+           <button
+  type="button"
+  onClick={handleGoogleLogin}
+  disabled={loading}
+  className="w-full border border-gray-300 py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-50 disabled:opacity-50"
+>
+  Continuar con Google
+</button>
+
 
             <button
               type="button"

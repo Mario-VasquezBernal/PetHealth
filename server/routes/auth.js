@@ -1,20 +1,6 @@
 // ============================================
 // AUTH.JS - RUTAS DE AUTENTICACIÓN
 // ============================================
-// Endpoints:
-// - POST /register: Registro de nuevos usuarios con validaciones
-// - POST /login: Autenticación de usuarios
-// - GET /profile: Obtener perfil del usuario autenticado
-// - PUT /profile: Actualizar datos del perfil
-// - GET /pets: Obtener mascotas del usuario
-// - GET /pets/:id: Obtener una mascota específica
-// - POST /pets: Crear nueva mascota
-// - PUT /pets/:id: Actualizar mascota
-// - DELETE /pets/:id: Eliminar mascota
-// - GET /is-verify: Verificar si el token es válido
-// - POST /forgot-password: Solicitar recuperación de contraseña
-// - POST /reset-password: Resetear contraseña con token
-// ============================================
 
 const router = require("express").Router();
 const pool = require("../db");
@@ -26,46 +12,42 @@ const crypto = require('crypto');
 const sendEmail = require('../utils/emailService');
 const { body, validationResult } = require('express-validator');
 
+// ✅ NUEVO (solo esto)
+const admin = require("../config/firebase");
+
 // ========================================
 // 1. REGISTRO CON VALIDACIONES
 // ========================================
 router.post("/register", [
-  // Validaciones
   body('email')
     .isEmail()
     .withMessage('Email inválido')
     .normalizeEmail(),
-  
   body('password')
     .isLength({ min: 6 })
     .withMessage('La contraseña debe tener mínimo 6 caracteres'),
-  
   body('name')
     .trim()
     .notEmpty()
     .withMessage('El nombre completo es obligatorio')
     .isLength({ min: 3 })
     .withMessage('El nombre debe tener mínimo 3 caracteres'),
-  
   body('phone')
     .optional({ checkFalsy: true })
     .matches(/^[0-9]{10}$/)
     .withMessage('El teléfono debe tener 10 dígitos numéricos'),
-
   body('address')
     .optional({ checkFalsy: true })
     .trim(),
-
   body('city')
     .optional({ checkFalsy: true })
     .trim(),
-
   body('country')
     .optional({ checkFalsy: true })
     .trim()
 ], async (req, res) => {
   try {
-    // Verificar errores de validación
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ 
@@ -138,6 +120,61 @@ router.post("/login", async (req, res) => {
   }
 });
 
+
+// ========================================
+// ✅ LOGIN CON GOOGLE (FIREBASE)
+// ========================================
+router.post("/google", async (req, res) => {
+  try {
+
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({ message: "Token de Google requerido" });
+    }
+
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+
+    const email = decodedToken.email;
+    const fullName = decodedToken.name || decodedToken.email;
+
+    const user = await pool.query(
+      "SELECT * FROM users WHERE email = $1",
+      [email]
+    );
+
+    let userRow;
+
+    if (user.rows.length === 0) {
+
+      const newUser = await pool.query(
+        `INSERT INTO users (full_name, email, password_hash)
+         VALUES ($1, $2, $3)
+         RETURNING *`,
+        [
+          fullName,
+          email,
+          crypto.randomBytes(32).toString("hex")
+        ]
+      );
+
+      userRow = newUser.rows[0];
+
+    } else {
+      userRow = user.rows[0];
+    }
+
+    const token = jwtGenerator(userRow.id);
+
+    return res.json({ token });
+
+  } catch (error) {
+    console.error("❌ Google login error:", error.message);
+    return res.status(401).json({ message: "Token de Google inválido" });
+  }
+});
+
+
 // ========================================
 // 3. OBTENER PERFIL
 // ========================================
@@ -173,7 +210,6 @@ router.put("/profile", authorization, async (req, res) => {
        WHERE id = $6 
        RETURNING full_name as name, email, phone, address, city, country`,
       [name, phone, address, city, country, req.user.id]
-
     );
     
     return res.json(update.rows[0]);
@@ -212,7 +248,6 @@ router.get("/pets/:id", authorization, async (req, res) => {
     const pet = await pool.query(
       "SELECT * FROM pets WHERE id = $1 AND user_id = $2",
       [id, req.user.id]
-
     );
     
     if (pet.rows.length === 0) {
@@ -239,7 +274,6 @@ router.post("/pets", authorization, async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
       [req.user.id, name, species, breed, birth_date, gender, weight, photo_url, allergies, is_sterilized]
-
     );
     
     return res.json(newPet.rows[0]);
@@ -265,7 +299,6 @@ router.put("/pets/:id", authorization, async (req, res) => {
        WHERE id = $10 AND user_id = $11
        RETURNING *`,
       [name, species, breed, birth_date, gender, weight, photo_url, allergies, is_sterilized, id, req.user.id]
-
     );
     
     if (updatePet.rows.length === 0) {
@@ -290,7 +323,6 @@ router.delete("/pets/:id", authorization, async (req, res) => {
     const deletePet = await pool.query(
       "DELETE FROM pets WHERE id = $1 AND user_id = $2 RETURNING *",
       [id, req.user.id]
-
     );
     
     if (deletePet.rows.length === 0) {
@@ -320,21 +352,18 @@ router.get("/is-verify", authorization, async (req, res) => {
 // RECUPERACIÓN DE CONTRASEÑA
 // ========================================
 
-// 1. Solicitar recuperación de contraseña
 router.post("/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
     
     console.log('🔑 Solicitud de recuperación para:', email);
 
-    // Verificar que el usuario existe
     const user = await pool.query(
       "SELECT id, full_name, email FROM users WHERE email = $1",
       [email]
     );
 
     if (user.rows.length === 0) {
-      // Por seguridad, no revelar si el email existe o no
       return res.json({ 
         message: "Si el email existe, recibirás un link de recuperación" 
       });
@@ -343,18 +372,15 @@ router.post("/forgot-password", async (req, res) => {
     const userId = user.rows[0].id;
     const userName = user.rows[0].full_name;
 
-    // Generar token JWT con expiración de 1 hora
     const resetToken = jwt.sign(
       { userId: userId, purpose: 'password-reset' },
       process.env.jwtSecret,
       { expiresIn: "1h" }
     );
 
-    // URL del frontend para resetear contraseña
     const frontendURL = process.env.FRONTEND_URL || "https://pet-health-s659.vercel.app";
     const resetLink = `${frontendURL}/reset-password?token=${resetToken}`;
 
-    // Enviar email con SendGrid
     const subject = "🔐 Recupera tu contraseña - PetHealth";
     const message = `Hola ${userName},\n\nRecibimos una solicitud para restablecer tu contraseña en PetHealth.\n\nHaz clic en el siguiente enlace para crear una nueva contraseña:\n${resetLink}\n\n⚠️ Este enlace expirará en 1 hora.\n\nSi no solicitaste este cambio, puedes ignorar este correo.\n\n¡Gracias por usar PetHealth! 🐾`;
 
@@ -376,7 +402,6 @@ router.post("/forgot-password", async (req, res) => {
   }
 });
 
-// 2. Resetear contraseña con token
 router.post("/reset-password", async (req, res) => {
   try {
     const { token, newPassword } = req.body;
@@ -387,7 +412,6 @@ router.post("/reset-password", async (req, res) => {
       return res.status(400).json({ error: "Token y contraseña son requeridos" });
     }
 
-    // Verificar token JWT
     let payload;
     try {
       payload = jwt.verify(token, process.env.jwtSecret);
@@ -395,18 +419,15 @@ router.post("/reset-password", async (req, res) => {
       return res.status(401).json({ error: "Token inválido o expirado" });
     }
 
-    // Verificar que el token sea para reseteo de contraseña
     if (payload.purpose !== 'password-reset') {
       return res.status(401).json({ error: "Token inválido" });
     }
 
     const userId = payload.userId;
 
-    // Hashear nueva contraseña
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
-    // Actualizar contraseña en la base de datos
     await pool.query(
       "UPDATE users SET password_hash = $1 WHERE id = $2",
       [hashedPassword, userId]
@@ -414,7 +435,6 @@ router.post("/reset-password", async (req, res) => {
 
     console.log('✅ Contraseña actualizada para usuario:', userId);
 
-    // Opcional: Enviar email de confirmación
     const user = await pool.query(
       "SELECT full_name, email FROM users WHERE id = $1",
       [userId]

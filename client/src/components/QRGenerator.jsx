@@ -39,7 +39,6 @@ const QRGenerator = ({ petId, petName, mode = 'READ_ONLY' }) => {
   useEffect(() => {
     if (!selectedClinicId) return;
 
-    // 👉 si es independiente NO entra aquí
     if (selectedClinicId === 'independent') return;
 
     fetch(`${API_URL}/api/public/veterinarians/by-clinic/${selectedClinicId}`)
@@ -146,7 +145,10 @@ const QRGenerator = ({ petId, petName, mode = 'READ_ONLY' }) => {
 
             {/* DONDE ES LA ATENCIÓN */}
             <div className="relative">
-              <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20}/>
+              <Building2
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                size={20}
+              />
               <select 
                 className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-green-500 transition-all appearance-none"
                 value={selectedClinicId}
@@ -160,13 +162,16 @@ const QRGenerator = ({ petId, petName, mode = 'READ_ONLY' }) => {
               </select>
             </div>
 
-            {/* SELECT DOCTOR (MISMO SELECT, MISMA UI) */}
+            {/* SELECT DOCTOR */}
             <div
               className={`relative transition-all ${
                 !selectedClinicId ? 'opacity-30 pointer-events-none' : ''
               }`}
             >
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20}/>
+              <User
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                size={20}
+              />
               <select 
                 className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-green-500 transition-all appearance-none"
                 value={selectedVetName}
@@ -179,7 +184,6 @@ const QRGenerator = ({ petId, petName, mode = 'READ_ONLY' }) => {
                     {v.name}
                   </option>
                 ))}
-
               </select>
             </div>
 
@@ -197,10 +201,14 @@ const QRGenerator = ({ petId, petName, mode = 'READ_ONLY' }) => {
 
       ) : (
 
-        /* VISTA DEL QR GENERADO */
+        /* VISTA DEL QR */
         <div className="flex flex-col items-center animate-in zoom-in-95 duration-300">
 
-          <div className={`relative p-6 rounded-[2.5rem] bg-white shadow-2xl border-4 ${isRead ? 'border-blue-50' : 'border-green-50'}`}>
+          <div
+            className={`relative p-6 rounded-[2.5rem] bg-white shadow-2xl border-4 ${
+              isRead ? 'border-blue-50' : 'border-green-50'
+            }`}
+          >
             <QRCode 
               id={`qr-code-svg-${mode}`}
               value={qrValue} 
@@ -227,7 +235,9 @@ const QRGenerator = ({ petId, petName, mode = 'READ_ONLY' }) => {
           <div className="grid grid-cols-2 gap-3 w-full mt-8">
             <button 
               onClick={handleDownloadQR}
-              className={`flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-white transition-all hover:brightness-110 shadow-md ${isRead ? 'bg-blue-600' : 'bg-green-600'}`}
+              className={`flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-white transition-all hover:brightness-110 shadow-md ${
+                isRead ? 'bg-blue-600' : 'bg-green-600'
+              }`}
             >
               <Download size={18} /> PNG
             </button>
