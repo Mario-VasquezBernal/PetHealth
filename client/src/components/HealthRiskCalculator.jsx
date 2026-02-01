@@ -1,6 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { AlertTriangle, Heart, TrendingUp, Info, Activity, Shield } from 'lucide-react';
+import { normalizeSpecies, getSpeciesProfile } from '../speciesProfiles';
 
 const HealthRiskCalculator = ({ pet }) => {
   const [risks, setRisks] = useState([]);
@@ -15,9 +15,29 @@ const HealthRiskCalculator = ({ pet }) => {
 
   // 📊 MODELO PROBABILÍSTICO DE RIESGO
   const calculateRisks = () => {
+
     const age = calculateAge(pet.birth_date);
     const weight = parseFloat(pet.weight) || 0;
-    const species = pet.type || pet.species || '';
+
+    const normalizedSpecies = normalizeSpecies(pet);
+    const speciesProfile = getSpeciesProfile(normalizedSpecies);
+
+    // 🔐 este modelo solo aplica a especies soportadas
+    if (!speciesProfile.supportsHealthRisk) {
+      setRisks([]);
+      setOverallRisk('low');
+      return;
+    }
+
+    // ⚠️ mapeo interno para no tocar tu lógica actual
+    // (tu modelo usa 'Perro' y 'Gato')
+    const species =
+      normalizedSpecies === 'dog'
+        ? 'Perro'
+        : normalizedSpecies === 'cat'
+          ? 'Gato'
+          : '';
+
     const breed = pet.breed || '';
     const isNeutered = pet.is_sterilized;
 
@@ -61,6 +81,8 @@ const HealthRiskCalculator = ({ pet }) => {
       if (maxRisk >= 60) setOverallRisk('high');
       else if (maxRisk >= 35) setOverallRisk('medium');
       else setOverallRisk('low');
+    } else {
+      setOverallRisk('low');
     }
   };
 
@@ -409,6 +431,7 @@ const HealthRiskCalculator = ({ pet }) => {
 };
 
 export default HealthRiskCalculator;
+
 // ============================================
 // HEALTHRISKCALCULATOR.JSX
 // ============================================

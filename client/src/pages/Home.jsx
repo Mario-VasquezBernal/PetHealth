@@ -1,18 +1,16 @@
-// ============================================
-// HOME.JSX
-// ============================================
+import { useState, useEffect } from "react";
+import { toast } from "react-toastify";
+import PetCard from "../components/PetCard";
+import Sidebar from "../components/Sidebar";
+import MobileHeader from "../components/MobileHeader";
+import {
+  getPets,
+  addPetToStorage,
+  deletePetFromStorage,
+  getUserProfile
+} from "../dataManager";
 
-import { useState, useEffect } from 'react';
-
-import { toast } from 'react-toastify';
-import PetCard from '../components/PetCard';
-import Sidebar from '../components/Sidebar';
-import MobileHeader from '../components/MobileHeader';
-import { getPets, addPetToStorage, deletePetFromStorage, getUserProfile } from '../dataManager';
-import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
-import { 
-  PlusCircle, Calendar, Upload, X, Dog, Cat, Heart, MapPin, ArrowRight
-} from 'lucide-react';
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 
 const Home = () => {
   const [pets, setPets] = useState([]);
@@ -21,17 +19,20 @@ const Home = () => {
   const [, setLoading] = useState(true);
 
   const [uploading, setUploading] = useState(false);
-  const [imageUrl, setImageUrl] = useState('');
+  const [imageUrl, setImageUrl] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
 
-  const CLOUD_NAME = "dggoadwam"; 
-  const UPLOAD_PRESET = "pethealth_app"; 
+  const CLOUD_NAME = "dggoadwam";
+  const UPLOAD_PRESET = "pethealth_app";
 
   const loadPets = async () => {
     try {
       setLoading(true);
-      const [petsData, userData] = await Promise.all([getPets(), getUserProfile()]);
+      const [petsData, userData] = await Promise.all([
+        getPets(),
+        getUserProfile()
+      ]);
+
       setPets(Array.isArray(petsData) ? petsData : []);
       setUser(userData);
     } catch {
@@ -41,13 +42,15 @@ const Home = () => {
     }
   };
 
-  useEffect(() => { loadPets(); }, []);
+  useEffect(() => {
+    loadPets();
+  }, []);
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     uploadToCloudinary(file);
-    e.target.value = '';
+    e.target.value = "";
   };
 
   const handleCameraUpload = async () => {
@@ -70,20 +73,27 @@ const Home = () => {
 
   const uploadToCloudinary = async (fileOrBase64) => {
     setUploading(true);
+
     const formData = new FormData();
     formData.append("file", fileOrBase64);
     formData.append("upload_preset", UPLOAD_PRESET);
 
     try {
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
-        method: "POST",
-        body: formData
-      });
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+        {
+          method: "POST",
+          body: formData
+        }
+      );
+
       const data = await res.json();
 
       if (data.secure_url) {
         setImageUrl(data.secure_url);
         toast.success("Foto subida correctamente 📸");
+      } else {
+        toast.error("No se pudo subir la imagen");
       }
     } catch {
       toast.error("Error al subir imagen");
@@ -94,14 +104,14 @@ const Home = () => {
 
   const handleAddPet = async (event) => {
     event.preventDefault();
+
     const form = event.target;
 
     if (uploading) return toast.warning("Espera a que suba la foto ⏳");
 
     const newPet = {
       name: form.name.value,
-      type: form.species.value,
-      species: form.species.value,
+      species_code: form.species.value,
       breed: form.breed.value,
       birth_date: form.birth_date.value,
       gender: form.gender.value,
@@ -116,7 +126,7 @@ const Home = () => {
       await loadPets();
       setIsModalOpen(false);
       form.reset();
-      setImageUrl('');
+      setImageUrl("");
       toast.success("¡Mascota registrada! 🎉");
     } catch {
       toast.error("Error al guardar mascota");
@@ -124,32 +134,47 @@ const Home = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('¿Eliminar mascota?')) {
-      await deletePetFromStorage(id);
-      await loadPets();
-      toast.info("Mascota eliminada 🗑️");
+    if (window.confirm("¿Eliminar mascota?")) {
+      try {
+        await deletePetFromStorage(id);
+        await loadPets();
+        toast.info("Mascota eliminada 🗑️");
+      } catch {
+        toast.error("Error al eliminar");
+      }
     }
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setImageUrl('');
+    setImageUrl("");
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar user={user} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} onNewPet={() => setIsModalOpen(true)} />
+      <Sidebar
+        user={user}
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        onNewPet={() => setIsModalOpen(true)}
+      />
 
       <div className="flex-1 lg:ml-72">
-        <MobileHeader onMenuClick={() => setSidebarOpen(true)} onNewPet={() => setIsModalOpen(true)} />
+        <MobileHeader
+          onMenuClick={() => setSidebarOpen(true)}
+          onNewPet={() => setIsModalOpen(true)}
+        />
 
         <main className="px-4 lg:px-8 py-8">
-          <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 text-white px-6 py-3 rounded-xl mb-6">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-blue-600 text-white px-6 py-3 rounded-xl mb-6"
+          >
             Agregar Mascota
           </button>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {pets.map(pet => (
+            {pets.map((pet) => (
               <PetCard key={pet.id} {...pet} onDelete={handleDelete} />
             ))}
           </div>
@@ -162,39 +187,136 @@ const Home = () => {
 
             <form onSubmit={handleAddPet} className="space-y-4">
 
-              <input name="name" required placeholder="Nombre" className="border p-2 w-full" />
-              <select name="species" className="border p-2 w-full">
-                <option>Perro</option>
-                <option>Gato</option>
-              </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-              <input name="breed" placeholder="Raza" className="border p-2 w-full" />
-              <input name="birth_date" type="date" className="border p-2 w-full" />
-              <input name="weight" type="number" placeholder="Peso" className="border p-2 w-full" />
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Nombre *
+                  </label>
+                  <input
+                    name="name"
+                    required
+                    className="border p-2 w-full rounded"
+                  />
+                </div>
 
-              <div className="flex gap-3 justify-center mt-4">
-                <button type="button" onClick={handleCameraUpload} disabled={uploading}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-xl">
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Especie *
+                  </label>
+                  <select
+                    name="species"
+                    className="border p-2 w-full rounded"
+                  >
+                    <option value="dog">Perro</option>
+                    <option value="cat">Gato</option>
+                    <option value="bird">Ave</option>
+                    <option value="rabbit">Conejo</option>
+                    <option value="other">Otro</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Raza
+                  </label>
+                  <input
+                    name="breed"
+                    className="border p-2 w-full rounded"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Fecha de nacimiento
+                  </label>
+                  <input
+                    type="date"
+                    name="birth_date"
+                    className="border p-2 w-full rounded"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Género
+                  </label>
+                  <select
+                    name="gender"
+                    className="border p-2 w-full rounded"
+                  >
+                    <option value="male">Macho</option>
+                    <option value="female">Hembra</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Peso (kg)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    name="weight"
+                    className="border p-2 w-full rounded"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" name="is_sterilized" />
+                  Esterilizado
+                </label>
+              </div>
+
+              <textarea
+                name="allergies"
+                placeholder="Alergias"
+                className="border p-2 w-full rounded"
+              />
+
+              <div className="flex gap-3 justify-center">
+                <button
+                  type="button"
+                  onClick={handleCameraUpload}
+                  disabled={uploading}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-xl"
+                >
                   📷 Cámara / Galería
                 </button>
 
                 <label className="bg-gray-200 px-4 py-2 rounded-xl cursor-pointer">
                   📁 Archivo
-                  <input type="file" accept="image/*" hidden onChange={handleFileUpload} />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={handleFileUpload}
+                  />
                 </label>
               </div>
 
               {imageUrl && (
-                <img src={imageUrl} alt="preview" className="h-40 mx-auto mt-4 rounded-xl object-cover" />
+                <img
+                  src={imageUrl}
+                  alt="preview"
+                  className="h-40 mx-auto mt-4 rounded-xl object-cover"
+                />
               )}
 
-              <textarea name="allergies" placeholder="Alergias" className="border p-2 w-full"></textarea>
-
               <div className="flex gap-3 pt-4">
-                <button type="button" onClick={handleCloseModal} className="flex-1 bg-gray-200 p-3 rounded-xl">
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="flex-1 bg-gray-200 p-3 rounded-xl"
+                >
                   Cancelar
                 </button>
-                <button type="submit" className="flex-1 bg-blue-600 text-white p-3 rounded-xl">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white p-3 rounded-xl"
+                >
                   Guardar
                 </button>
               </div>
