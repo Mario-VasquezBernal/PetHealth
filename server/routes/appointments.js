@@ -103,11 +103,17 @@ router.post("/", authorization, async (req, res) => {
 
       const { email, full_name } = userResult.rows[0] || {};
 
-      if (sendEmail && email) {
-        const subject = "Cita Agendada - PetHealth";
-        const message = `Hola ${full_name || ""}, tu cita ha sido registrada para el ${appointmentDate.toLocaleString()}. Motivo: ${reason || "Control general"}.`;
-        await sendEmail(email, subject, message);
-      }
+      if (email) {
+  const subject = "Cita Agendada - PetHealth";
+  const message = `Hola ${full_name || ""}, tu cita ha sido registrada para el ${appointmentDate.toLocaleString("es-EC", {
+  timeZone: "America/Guayaquil"
+})
+}. Motivo: ${reason || "Control general"}.`;
+
+  sendEmail(email, subject, message)
+    .catch(e => console.error("Error enviando email:", e.message));
+}
+
     } catch (emailErr) {
       console.error("Error enviando email:", emailErr.message);
     }
@@ -203,7 +209,10 @@ El médico ha indicado que la consulta de tu mascota ${data.pet_name}
 requiere una nueva revisión.
 
 📅 Fecha de la próxima revisión:
-${new Date(next_review_date).toLocaleString()}
+${new Date(next_review_date).toLocaleString("es-EC", {
+  timeZone: "America/Guayaquil"
+})}
+
 
 Puedes ver el detalle ingresando a la aplicación.
 

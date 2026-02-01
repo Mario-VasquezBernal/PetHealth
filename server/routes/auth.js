@@ -13,7 +13,7 @@ const sendEmail = require('../utils/emailService');
 const { body, validationResult } = require('express-validator');
 
 // ✅ NUEVO (solo esto)
-const admin = require("../config/firebase");
+//const admin = require("../config/firebase");
 
 // ========================================
 // 1. REGISTRO CON VALIDACIONES

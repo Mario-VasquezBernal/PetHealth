@@ -12,6 +12,7 @@ const veterinariansRouter = require('./routes/veterinarians');
 const ratingsRouter = require('./routes/ratings');
 const aiRoutes = require('./routes/ai');
 const publicRoutes = require('./routes/public.routes'); 
+const startAppointmentReminderCron = require("./cron/appointmentReminder");
 
 const app = express();
 
@@ -39,9 +40,9 @@ app.use("/vet", require("./routes/vet"));
 app.use("/appointments", require("./routes/appointments"));
 app.use("/tasks", require("./routes/tasks"));
 
-app.use("/clinics", clinicsRouter);           // <--- Restaurado a "/clinics"
-app.use("/veterinarians", veterinariansRouter); // <--- Restaurado a "/veterinarians"
-app.use("/ratings", ratingsRouter);           // <--- Restaurado a "/ratings"
+app.use("/clinics", clinicsRouter);           
+app.use("/veterinarians", veterinariansRouter);
+app.use("/ratings", ratingsRouter);           
 
 app.use("/qr", require("./routes/qr"));
 app.use("/medical-records", require("./routes/medicalRecords"));
@@ -57,4 +58,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
   initCronJobs();
+  startAppointmentReminderCron();   // ← ÚNICA LÍNEA AGREGADA
 });
