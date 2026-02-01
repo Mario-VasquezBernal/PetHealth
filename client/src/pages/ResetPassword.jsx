@@ -31,6 +31,11 @@ const ResetPassword = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!token) {
+      toast.error('Token inválido');
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
       return toast.error('Las contraseñas no coinciden');
     }
@@ -54,7 +59,7 @@ const ResetPassword = () => {
         toast.success('✅ Contraseña actualizada exitosamente');
         setTimeout(() => navigate('/'), 2000);
       } else {
-        toast.error(data.error || 'Error al actualizar contraseña');
+        toast.error(data?.error || data?.message || 'Error al actualizar contraseña');
       }
     } catch (error) {
       console.error(error);
@@ -81,7 +86,10 @@ const ResetPassword = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center p-4">
       <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full">
-        <Link to="/" className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-700 mb-6 transition-colors">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-700 mb-6 transition-colors"
+        >
           <ArrowLeft className="w-4 h-4" />
           Volver al inicio
         </Link>
@@ -128,7 +136,7 @@ const ResetPassword = () => {
             disabled={loading}
             style={{
               width: '100%',
-              background: loading 
+              background: loading
                 ? 'linear-gradient(to right, #d1d5db, #9ca3af)'
                 : 'linear-gradient(to right, #10b981, #059669)',
               color: '#ffffff',

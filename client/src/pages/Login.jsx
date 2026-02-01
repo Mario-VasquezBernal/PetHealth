@@ -62,7 +62,9 @@ const Login = () => {
     const userEmail = prompt('Ingresa tu email:');
     if (!userEmail) return;
 
-    if (!emailRegex.test(userEmail)) {
+    const cleanEmail = userEmail.trim();
+
+    if (!emailRegex.test(cleanEmail)) {
       toast.error('Email inválido');
       return;
     }
@@ -71,11 +73,17 @@ const Login = () => {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: userEmail })
+        body: JSON.stringify({ email: cleanEmail })
       });
 
       const data = await res.json();
-      res.ok ? toast.success('📧 Revisa tu correo') : toast.error(data.error);
+
+      if (res.ok) {
+        toast.success('📧 Revisa tu correo');
+      } else {
+        toast.error(data?.error || data?.message || 'Error al enviar correo');
+      }
+
     } catch {
       toast.error('Error de conexión');
     }
@@ -201,15 +209,14 @@ const Login = () => {
             </div>
 
             {/* Google button */}
-           <button
-  type="button"
-  onClick={handleGoogleLogin}
-  disabled={loading}
-  className="w-full border border-gray-300 py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-50 disabled:opacity-50"
->
-  Continuar con Google
-</button>
-
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={loading}
+              className="w-full border border-gray-300 py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-50 disabled:opacity-50"
+            >
+              Continuar con Google
+            </button>
 
             <button
               type="button"
