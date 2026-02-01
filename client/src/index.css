@@ -12,4 +12,19 @@ button span {
   visibility: visible !important;
 }
 
+/* ============================================
+   FIX REAL: Leaflet no debe quedar por encima
+   de sidebars / overlays / modales
+   ============================================ */
+
+.leaflet-container {
+  z-index: 0 !important;
+}
+
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 0 !important;
+}
+
 /* Otros estilos... */
