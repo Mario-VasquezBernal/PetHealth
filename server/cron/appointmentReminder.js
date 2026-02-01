@@ -26,8 +26,6 @@ function startAppointmentReminderCron() {
         WHERE a.status = 'Pendiente'
           AND a.reminder_sent = false
 
-          AND a.date BETWEEN NOW() + INTERVAL '23 hours 50 minutes'
-
           AND a.date BETWEEN (NOW() + INTERVAL '23 hours 50 minutes')
                AND (NOW() + INTERVAL '24 hours 10 minutes')
 
