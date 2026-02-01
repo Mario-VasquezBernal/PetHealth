@@ -2,7 +2,9 @@ export const petsData = [
   { 
     id: 1, 
     name: 'Max', 
-    type: 'Perro', 
+    species: 'dog',
+    // compatibilidad temporal con código antiguo
+    type: 'Perro',
     age: 3, 
     lastCheckup: '12 Oct 2024',
     history: [
@@ -13,7 +15,8 @@ export const petsData = [
   { 
     id: 2, 
     name: 'Luna', 
-    type: 'Gato', 
+    species: 'cat',
+    type: 'Gato',
     age: 2, 
     lastCheckup: '05 Nov 2024',
     history: [
@@ -23,7 +26,8 @@ export const petsData = [
   { 
     id: 3, 
     name: 'Rocky', 
-    type: 'Perro', 
+    species: 'dog',
+    type: 'Perro',
     age: 5, 
     lastCheckup: '20 Sep 2024',
     history: []

@@ -44,8 +44,9 @@ const Home = () => {
   const UPLOAD_PRESET = "pethealth_app"; 
 
   const totalPets = pets.length;
-  const totalDogs = pets.filter(p => p.species === 'Perro' || p.type === 'Perro').length;
-  const totalCats = pets.filter(p => p.species === 'Gato' || p.type === 'Gato').length;
+  const totalDogs = pets.filter(p => p.species_code === 'dog').length;
+const totalCats = pets.filter(p => p.species_code === 'cat').length;
+
 
   const loadPets = async () => {
     try {
@@ -97,17 +98,18 @@ const Home = () => {
     if (uploading) return toast.warning("Espera a que suba la foto ⏳");
 
     const newPet = {
-      name: form.name.value,
-      type: form.species.value,
-      species: form.species.value,
-      breed: form.breed.value,
-      birth_date: form.birth_date.value,
-      gender: form.gender.value,
-      weight: parseFloat(form.weight.value) || 0,
-      photo_url: imageUrl, 
-      is_sterilized: form.is_sterilized.checked,
-      allergies: form.allergies.value
-    };
+  name: form.name.value,
+  species_code: form.species.value,
+  breed: form.breed.value,
+  birth_date: form.birth_date.value,
+  gender: form.gender.value,
+  weight: parseFloat(form.weight.value) || 0,
+  photo_url: imageUrl,
+  is_sterilized: form.is_sterilized.checked,
+  allergies: form.allergies.value
+};
+
+
 
     try {
       await addPetToStorage(newPet);
@@ -296,16 +298,14 @@ const Home = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Especie *</label>
-                    <select 
-                      name="species" 
-                      className="w-full border border-gray-300 bg-white p-3 rounded-xl text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
-                    >
-                      <option value="Perro">Perro</option>
-                      <option value="Gato">Gato</option>
-                      <option value="Ave">Ave</option>
-                      <option value="Conejo">Conejo</option>
-                      <option value="Otro">Otro</option>
-                    </select>
+                    <select name="species">
+  <option value="dog">Perro</option>
+  <option value="cat">Gato</option>
+  <option value="bird">Ave</option>
+  <option value="rabbit">Conejo</option>
+  <option value="other">Otro</option>
+</select>
+
                   </div>
                 </div>
               </div>

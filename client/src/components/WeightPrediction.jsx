@@ -1,19 +1,14 @@
 // ============================================
 // WEIGHTPREDICTION.JSX
 // ============================================
-// Predicción de peso futuro usando regresión lineal por mínimos cuadrados
-// Requiere ≥2 mediciones de peso del historial médico
-// Calcula: tendencia (increasing/decreasing/stable), cambio mensual, predicciones a 3/6/12 meses con IC 95%
-// Modelo: y = mx + b, muestra ecuación, desviación estándar y datos estadísticos
-// Visualiza tendencia con ícono/color y cards por período con intervalos de confianza
-// ============================================
 
 import { useState, useEffect } from 'react';
 import { getMedicalRecords } from '../dataManager';
 import { TrendingUp, TrendingDown, AlertTriangle, LineChart, Calendar } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { normalizeSpecies, getSpeciesProfile } from '../speciesProfiles';
 
-const WeightPrediction = ({ petId }) => {
+const WeightPrediction = ({ petId, pet }) => {
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(true);
   const [weightHistory, setWeightHistory] = useState([]);
@@ -26,8 +21,20 @@ const WeightPrediction = ({ petId }) => {
   const loadWeightHistory = async () => {
     try {
       setLoading(true);
+
+      // 🔐 chequeo de especie soportada
+      const normalizedSpecies = pet ? normalizeSpecies(pet) : 'other';
+      const profile = getSpeciesProfile(normalizedSpecies);
+
+      if (!profile.supportsWeightModel) {
+        setWeightHistory([]);
+        setPrediction(null);
+        setLoading(false);
+        return;
+      }
+
       const data = await getMedicalRecords(petId);
-      
+
       // Filtrar solo registros con peso
       const records = data.records || [];
       const weightsWithDates = records
@@ -43,7 +50,10 @@ const WeightPrediction = ({ petId }) => {
       // Si hay al menos 2 mediciones, calcular predicción
       if (weightsWithDates.length >= 2) {
         calculatePrediction(weightsWithDates);
+      } else {
+        setPrediction(null);
       }
+
     } catch (error) {
       console.error('Error al cargar historial de peso:', error);
       toast.error('Error al cargar datos de peso');
@@ -55,17 +65,15 @@ const WeightPrediction = ({ petId }) => {
   // 📊 REGRESIÓN LINEAL POR MÍNIMOS CUADRADOS
   const calculatePrediction = (data) => {
     const n = data.length;
-    
-    // Convertir fechas a días desde la primera medición
+
     const firstDate = data[0].date.getTime();
     const points = data.map(item => ({
       x: (item.date.getTime() - firstDate) / (1000 * 60 * 60 * 24),
       y: item.weight
     }));
 
-    // Calcular sumas para regresión lineal: y = mx + b
     let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-    
+
     points.forEach(point => {
       sumX += point.x;
       sumY += point.y;
@@ -73,26 +81,21 @@ const WeightPrediction = ({ petId }) => {
       sumX2 += point.x * point.x;
     });
 
-    // Calcular pendiente (m) e intercepto (b)
     const m = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
     const b = (sumY - m * sumX) / n;
 
-    // Calcular desviación estándar
     const predictions = points.map(p => m * p.x + b);
     const errors = points.map((p, i) => p.y - predictions[i]);
     const variance = errors.reduce((sum, err) => sum + err * err, 0) / n;
     const stdDev = Math.sqrt(variance);
 
-    // Días actuales desde la primera medición
     const today = new Date();
     const daysFromStart = (today.getTime() - firstDate) / (1000 * 60 * 60 * 24);
 
-    // Predicciones futuras
     const predictions3m = m * (daysFromStart + 90) + b;
     const predictions6m = m * (daysFromStart + 180) + b;
     const predictions12m = m * (daysFromStart + 365) + b;
 
-    // Tendencia
     const trend = m > 0.01 ? 'increasing' : m < -0.01 ? 'decreasing' : 'stable';
     const changePerMonth = m * 30;
 
@@ -126,7 +129,7 @@ const WeightPrediction = ({ petId }) => {
 
   const getTrendIcon = () => {
     if (!prediction) return null;
-    
+
     switch (prediction.trend) {
       case 'increasing':
         return <TrendingUp className="w-6 h-6 text-orange-600" />;
@@ -139,7 +142,7 @@ const WeightPrediction = ({ petId }) => {
 
   const getTrendText = () => {
     if (!prediction) return '';
-    
+
     const change = Math.abs(prediction.changePerMonth).toFixed(2);
     switch (prediction.trend) {
       case 'increasing':
@@ -153,7 +156,7 @@ const WeightPrediction = ({ petId }) => {
 
   const getTrendColor = () => {
     if (!prediction) return 'gray';
-    
+
     switch (prediction.trend) {
       case 'increasing':
         return 'orange';
@@ -170,6 +173,28 @@ const WeightPrediction = ({ petId }) => {
         <div className="animate-pulse">
           <div className="h-6 bg-primary-200 rounded w-1/3 mb-4"></div>
           <div className="h-20 bg-primary-100 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // 🧠 especie no soportada para modelo de peso
+  const normalizedSpecies = pet ? normalizeSpecies(pet) : 'other';
+  const profile = getSpeciesProfile(normalizedSpecies);
+
+  if (!profile.supportsWeightModel) {
+    return (
+      <div className="bg-white rounded-card shadow-card border border-primary-100 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <LineChart className="w-6 h-6 text-primary-600" />
+          <h3 className="text-xl font-bold text-primary-900">Predicción de Peso</h3>
+        </div>
+
+        <div className="text-center py-8">
+          <AlertTriangle className="w-16 h-16 text-gray-400 mx-auto mb-3" />
+          <p className="text-primary-600">
+            La predicción de peso no está disponible para esta especie.
+          </p>
         </div>
       </div>
     );
@@ -233,7 +258,6 @@ const WeightPrediction = ({ petId }) => {
       <div className="space-y-4">
         <h4 className="font-bold text-primary-900 mb-3">Proyecciones Futuras</h4>
 
-        {/* 3 meses */}
         <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
@@ -249,7 +273,6 @@ const WeightPrediction = ({ petId }) => {
           </p>
         </div>
 
-        {/* 6 meses */}
         <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
@@ -265,7 +288,6 @@ const WeightPrediction = ({ petId }) => {
           </p>
         </div>
 
-        {/* 12 meses */}
         <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
@@ -282,7 +304,6 @@ const WeightPrediction = ({ petId }) => {
         </div>
       </div>
 
-      {/* Advertencia */}
       <div className="mt-6 bg-amber-50 border-l-4 border-amber-500 p-3 rounded">
         <p className="text-xs text-amber-800 flex items-start gap-2">
           <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />

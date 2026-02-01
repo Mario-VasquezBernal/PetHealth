@@ -12,6 +12,8 @@ import HealthRiskCalculator from '../components/HealthRiskCalculator';
 import HealthAIPredictor from '../components/HealthAIPredictor';
 import StyledQRCard from '../components/StyledQRCard';
 
+import { normalizeSpecies, getSpeciesProfile } from '../speciesProfiles';
+
 import { 
   Calendar, 
   Weight, 
@@ -137,14 +139,16 @@ const PetDetails = () => {
     return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
-  const getDefaultImage = (species) => {
+  const getDefaultImage = (speciesKey) => {
     const images = {
-      'Perro': 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=800',
-      'Gato': 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=800',
-      'Ave': 'https://images.unsplash.com/photo-1552728089-57bdde30beb3?w=800',
-      'Conejo': 'https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?w=800',
+      dog: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=800',
+      cat: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=800',
+      bird: 'https://images.unsplash.com/photo-1552728089-57bdde30beb3?w=800',
+      rabbit: 'https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?w=800',
+      reptile: 'https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=800'
     };
-    return images[species] || 'https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=800';
+
+    return images[speciesKey] || 'https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=800';
   };
 
   if (loading) {
@@ -173,6 +177,9 @@ const PetDetails = () => {
     );
   }
 
+  const normalizedSpecies = normalizeSpecies(pet);
+  const speciesProfile = getSpeciesProfile(normalizedSpecies);
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar user={user} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} onNewPet={null} />
@@ -199,13 +206,13 @@ const PetDetails = () => {
               <div className="bg-white rounded-3xl overflow-hidden shadow-xl border border-gray-100">
                 <div className="relative aspect-square bg-gradient-to-br from-gray-100 to-gray-50">
                   <img 
-                    src={pet.photo_url || getDefaultImage(pet.type || pet.species)} 
+                    src={pet.photo_url || getDefaultImage(normalizedSpecies)} 
                     alt={pet.name}
                     className="w-full h-full object-cover"
-                    onError={(e) => { e.target.src = getDefaultImage(pet.type || pet.species); }}
+                    onError={(e) => { e.target.src = getDefaultImage(normalizedSpecies); }}
                   />
                   <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-semibold text-blue-700 border border-blue-200 shadow-md">
-                    {pet.type || pet.species}
+                    {speciesProfile.label}
                   </div>
                 </div>
                 <div className="p-6">
@@ -364,9 +371,11 @@ const PetDetails = () => {
                       </div>
                     </div>
 
-                    <WeightPrediction petId={id} />
+                    <WeightPrediction petId={id} pet={pet} />
+
                     <HealthRiskCalculator pet={pet} />
-                    <HealthAIPredictor petId={pet.id} />
+                    <HealthAIPredictor petId={pet.id} pet={pet} />
+
 
                     {/* QR SOLO LECTURA */}
                     <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6">

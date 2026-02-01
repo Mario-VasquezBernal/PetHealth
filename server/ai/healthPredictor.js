@@ -13,6 +13,52 @@ function calculateLifestyleScore(lifestyle) {
   return Math.min(score, 75);
 }
 
+/**
+ * Umbrales por especie.
+ * No cambia tu lógica, solo evita hardcode.
+ */
+const speciesProfiles = {
+  dog: {
+    obesityWeightThreshold: 30,
+    obesityAgeThreshold: 7
+  },
+  cat: {
+    obesityWeightThreshold: 6,
+    obesityAgeThreshold: 8
+  },
+  other: {
+    obesityWeightThreshold: null,
+    obesityAgeThreshold: null
+  }
+};
+
+/**
+ * Normaliza especie usando primero el modelo nuevo
+ * y mantiene compatibilidad con datos antiguos.
+ */
+function normalizeSpeciesBackend(pet) {
+  if (!pet) return "other";
+
+  // ✅ nuevo modelo
+  if (pet.species_code) {
+    return String(pet.species_code).toLowerCase();
+  }
+
+  // ✅ legacy temporal
+  if (pet.species) {
+    return String(pet.species).toLowerCase();
+  }
+
+  // ✅ muy antiguo
+  if (pet.type) {
+    const t = String(pet.type).toLowerCase();
+    if (t === "perro") return "dog";
+    if (t === "gato") return "cat";
+  }
+
+  return "other";
+}
+
 function predictHealth(pet, lifestyle) {
   if (!pet) {
     throw new Error("Pet data missing");
@@ -21,11 +67,32 @@ function predictHealth(pet, lifestyle) {
   const weight = Number(pet.weight || 0);
   const age = Number(pet.age || 0);
 
-  // 1️⃣ Probabilidad obesidad
-  let obesityProbability = 30;
+  // viene desde species_catalog
+  const aiProfile = pet.ai_profile || {};
 
-  if (weight > 30) obesityProbability += 25;
-  if (age > 7) obesityProbability += 15;
+  const speciesKey = normalizeSpeciesBackend(pet);
+  const profile = speciesProfiles[speciesKey] || speciesProfiles.other;
+
+  // 1️⃣ Probabilidad de obesidad (base desde catálogo)
+  let obesityProbability =
+    aiProfile.baseRisk === "high" ? 40 :
+    aiProfile.baseRisk === "medium" ? 30 :
+    aiProfile.baseRisk === "low" ? 20 :
+    30;
+
+  if (
+    profile.obesityWeightThreshold !== null &&
+    weight > profile.obesityWeightThreshold
+  ) {
+    obesityProbability += 25;
+  }
+
+  if (
+    profile.obesityAgeThreshold !== null &&
+    age > profile.obesityAgeThreshold
+  ) {
+    obesityProbability += 15;
+  }
 
   obesityProbability = Math.min(obesityProbability, 95);
 
@@ -55,15 +122,20 @@ function predictHealth(pet, lifestyle) {
   }
 
   return {
+    species: speciesKey,
     obesity: {
       probability: obesityProbability,
       severity:
-        obesityProbability > 70 ? "high" :
-        obesityProbability > 40 ? "medium" : "low"
+        obesityProbability > 70
+          ? "high"
+          : obesityProbability > 40
+          ? "medium"
+          : "low"
     },
     diabetes_2y: {
       probability: diabetes2y,
-      explanation: "Basado en obesidad + estilo de vida (modelo bayesiano simplificado)"
+      explanation:
+        "Basado en obesidad + estilo de vida (modelo bayesiano simplificado)"
     },
     markov_projection: {
       states: markovStates
