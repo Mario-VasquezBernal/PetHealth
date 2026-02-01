@@ -8,112 +8,113 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const jwtGenerator = require("../utils/jwtGenerator");
 const authorization = require("../middleware/authorization");
-const crypto = require('crypto');
-const sendEmail = require('../utils/emailService');
-const { body, validationResult } = require('express-validator');
+const crypto = require("crypto");
+const sendEmail = require("../utils/emailService");
+const { body, validationResult } = require("express-validator");
 
-// ✅ NUEVO (solo esto)
-//const admin = require("../config/firebase");
+// Firebase admin
+const admin = require("../config/firebase");
 
 // ========================================
 // 1. REGISTRO CON VALIDACIONES
 // ========================================
-router.post("/register", [
-<<<<<<< HEAD
-  body('email')
-    .isEmail()
-    .withMessage('Email inválido')
-    .normalizeEmail(),
-  body('password')
-    .isLength({ min: 6 })
-    .withMessage('La contraseña debe tener mínimo 6 caracteres'),
-  body('name')
-    .trim()
-    .notEmpty()
-    .withMessage('El nombre completo es obligatorio')
-    .isLength({ min: 3 })
-    .withMessage('El nombre debe tener mínimo 3 caracteres'),
-  body('phone')
-    .optional({ checkFalsy: true })
-    .matches(/^[0-9]{10}$/)
-    .withMessage('El teléfono debe tener 10 dígitos numéricos'),
-  body('address')
-    .optional({ checkFalsy: true })
-    .trim(),
-  body('city')
-    .optional({ checkFalsy: true })
-    .trim(),
-  body('country')
-    .optional({ checkFalsy: true })
-    .trim()
-=======
-  body('email').isEmail().withMessage('Email inválido').normalizeEmail(),
-  body('password').isLength({ min: 6 }).withMessage('La contraseña debe tener mínimo 6 caracteres'),
-  body('name').trim().notEmpty().withMessage('El nombre completo es obligatorio').isLength({ min: 3 }).withMessage('El nombre debe tener mínimo 3 caracteres'),
-  body('phone').optional({ checkFalsy: true }).matches(/^[0-9]{10}$/).withMessage('El teléfono debe tener 10 dígitos numéricos'),
-  body('address').optional({ checkFalsy: true }).trim(),
-  body('city').optional({ checkFalsy: true }).trim(),
-  body('country').optional({ checkFalsy: true }).trim()
->>>>>>> develop
-], async (req, res) => {
-  try {
+router.post(
+  "/register",
+  [
+    body("email").isEmail().withMessage("Email inválido").normalizeEmail(),
+    body("password")
+      .isLength({ min: 6 })
+      .withMessage("La contraseña debe tener mínimo 6 caracteres"),
+    body("name")
+      .trim()
+      .notEmpty()
+      .withMessage("El nombre completo es obligatorio")
+      .isLength({ min: 3 })
+      .withMessage("El nombre debe tener mínimo 3 caracteres"),
+    body("phone")
+      .optional({ checkFalsy: true })
+      .matches(/^[0-9]{10}$/)
+      .withMessage("El teléfono debe tener 10 dígitos numéricos"),
+    body("address").optional({ checkFalsy: true }).trim(),
+    body("city").optional({ checkFalsy: true }).trim(),
+    body("country").optional({ checkFalsy: true }).trim()
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ message: errors.array()[0].msg });
+      }
 
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ message: errors.array()[0].msg });
+      const { name, email, password, phone, address, city, country } = req.body;
+
+      const user = await pool.query(
+        "SELECT * FROM users WHERE email = $1",
+        [email]
+      );
+
+      if (user.rows.length > 0) {
+        return res.status(401).json({ message: "El usuario ya existe" });
+      }
+
+      const saltRound = 10;
+      const salt = await bcrypt.genSalt(saltRound);
+      const bcryptPassword = await bcrypt.hash(password, salt);
+
+      const newUser = await pool.query(
+        `INSERT INTO users (full_name, email, password_hash, phone, address, city, country)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING *`,
+        [
+          name,
+          email,
+          bcryptPassword,
+          phone || null,
+          address || null,
+          city || null,
+          country || null
+        ]
+      );
+
+      const token = jwtGenerator(newUser.rows[0].id);
+
+      return res.json({
+        token,
+        message: "Usuario registrado exitosamente"
+      });
+    } catch (err) {
+      console.error(err.message);
+      return res.status(500).json({ message: "Error del servidor" });
     }
-
-    const { name, email, password, phone, address, city, country } = req.body;
-
-    const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-
-    if (user.rows.length > 0) {
-      return res.status(401).json({ message: "El usuario ya existe" });
-    }
-
-    const saltRound = 10;
-    const salt = await bcrypt.genSalt(saltRound);
-    const bcryptPassword = await bcrypt.hash(password, salt);
-
-    const newUser = await pool.query(
-      `INSERT INTO users (full_name, email, password_hash, phone, address, city, country) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7) 
-       RETURNING *`,
-      [name, email, bcryptPassword, phone || null, address || null, city || null, country || null]
-    );
-
-    const token = jwtGenerator(newUser.rows[0].id);
-
-    return res.json({
-      token,
-      message: "Usuario registrado exitosamente"
-    });
-
-  } catch (err) {
-    console.error(err.message);
-    return res.status(500).json({ message: "Error del servidor" });
   }
-});
+);
 
 // ========================================
 // 2. LOGIN
 // ========================================
 router.post("/login", async (req, res) => {
   try {
-
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Email y contraseña son requeridos" });
+      return res
+        .status(400)
+        .json({ message: "Email y contraseña son requeridos" });
     }
 
-    const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+    const user = await pool.query(
+      "SELECT * FROM users WHERE email = $1",
+      [email]
+    );
 
     if (user.rows.length === 0) {
       return res.status(401).json({ message: "Credenciales incorrectas" });
     }
 
-    const validPassword = await bcrypt.compare(password, user.rows[0].password_hash);
+    const validPassword = await bcrypt.compare(
+      password,
+      user.rows[0].password_hash
+    );
 
     if (!validPassword) {
       return res.status(401).json({ message: "Credenciales incorrectas" });
@@ -122,20 +123,17 @@ router.post("/login", async (req, res) => {
     const token = jwtGenerator(user.rows[0].id);
 
     return res.json({ token });
-
   } catch (err) {
     console.error(err.message);
     return res.status(500).json({ message: "Error del servidor" });
   }
 });
 
-
 // ========================================
-// ✅ LOGIN CON GOOGLE (FIREBASE)
+// LOGIN CON GOOGLE (FIREBASE)
 // ========================================
 router.post("/google", async (req, res) => {
   try {
-
     const { idToken } = req.body;
 
     if (!idToken) {
@@ -155,20 +153,14 @@ router.post("/google", async (req, res) => {
     let userRow;
 
     if (user.rows.length === 0) {
-
       const newUser = await pool.query(
         `INSERT INTO users (full_name, email, password_hash)
          VALUES ($1, $2, $3)
          RETURNING *`,
-        [
-          fullName,
-          email,
-          crypto.randomBytes(32).toString("hex")
-        ]
+        [fullName, email, crypto.randomBytes(32).toString("hex")]
       );
 
       userRow = newUser.rows[0];
-
     } else {
       userRow = user.rows[0];
     }
@@ -176,20 +168,17 @@ router.post("/google", async (req, res) => {
     const token = jwtGenerator(userRow.id);
 
     return res.json({ token });
-
   } catch (error) {
     console.error("❌ Google login error:", error.message);
     return res.status(401).json({ message: "Token de Google inválido" });
   }
 });
 
-
 // ========================================
 // 3. OBTENER PERFIL
 // ========================================
 router.get("/profile", authorization, async (req, res) => {
   try {
-
     const user = await pool.query(
       "SELECT full_name as name, email, phone, address, city, country FROM users WHERE id = $1",
       [req.user.id]
@@ -200,7 +189,6 @@ router.get("/profile", authorization, async (req, res) => {
     }
 
     return res.json(user.rows[0]);
-
   } catch (err) {
     console.error(err.message);
     return res.status(500).json({ message: "Error del servidor" });
@@ -212,19 +200,17 @@ router.get("/profile", authorization, async (req, res) => {
 // ========================================
 router.put("/profile", authorization, async (req, res) => {
   try {
-
     const { name, phone, address, city, country } = req.body;
 
     const update = await pool.query(
-      `UPDATE users 
-       SET full_name = $1, phone = $2, address = $3, city = $4, country = $5 
-       WHERE id = $6 
+      `UPDATE users
+       SET full_name = $1, phone = $2, address = $3, city = $4, country = $5
+       WHERE id = $6
        RETURNING full_name as name, email, phone, address, city, country`,
       [name, phone, address, city, country, req.user.id]
     );
 
     return res.json(update.rows[0]);
-
   } catch (err) {
     console.error(err.message);
     return res.status(500).json({ message: "Error del servidor" });
@@ -236,7 +222,6 @@ router.put("/profile", authorization, async (req, res) => {
 // ========================================
 router.get("/pets", authorization, async (req, res) => {
   try {
-
     const pets = await pool.query(
       `
       SELECT
@@ -252,7 +237,6 @@ router.get("/pets", authorization, async (req, res) => {
     );
 
     return res.json(pets.rows);
-
   } catch (err) {
     console.error(err.message);
     return res.status(500).json({ message: "Error al obtener mascotas" });
@@ -264,13 +248,6 @@ router.get("/pets", authorization, async (req, res) => {
 // ========================================
 router.get("/pets/:id", authorization, async (req, res) => {
   try {
-<<<<<<< HEAD
-    const { id } = req.params;
-    
-    const pet = await pool.query(
-      "SELECT * FROM pets WHERE id = $1 AND user_id = $2",
-=======
-
     const { id } = req.params;
 
     const pet = await pool.query(
@@ -284,7 +261,6 @@ router.get("/pets/:id", authorization, async (req, res) => {
       WHERE p.id = $1
         AND p.user_id = $2
       `,
->>>>>>> develop
       [id, req.user.id]
     );
 
@@ -293,7 +269,6 @@ router.get("/pets/:id", authorization, async (req, res) => {
     }
 
     return res.json(pet.rows[0]);
-
   } catch (err) {
     console.error(err.message);
     return res.status(500).json({ message: "Error al obtener mascota" });
@@ -305,16 +280,6 @@ router.get("/pets/:id", authorization, async (req, res) => {
 // ========================================
 router.post("/pets", authorization, async (req, res) => {
   try {
-<<<<<<< HEAD
-    const { name, species, breed, birth_date, gender, weight, photo_url, allergies, is_sterilized } = req.body;
-    
-    const newPet = await pool.query(
-      `INSERT INTO pets (user_id, name, species, breed, birth_date, gender, weight, photo_url, allergies, is_sterilized)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       RETURNING *`,
-      [req.user.id, name, species, breed, birth_date, gender, weight, photo_url, allergies, is_sterilized]
-=======
-
     const {
       name,
       species_code,
@@ -358,11 +323,9 @@ router.post("/pets", authorization, async (req, res) => {
         allergies,
         is_sterilized
       ]
->>>>>>> develop
     );
 
     return res.json(newPet.rows[0]);
-
   } catch (err) {
     console.error(err.message);
     return res.status(500).json({ message: "Error al crear mascota" });
@@ -374,19 +337,6 @@ router.post("/pets", authorization, async (req, res) => {
 // ========================================
 router.put("/pets/:id", authorization, async (req, res) => {
   try {
-<<<<<<< HEAD
-    const { id } = req.params;
-    const { name, species, breed, birth_date, gender, weight, photo_url, allergies, is_sterilized } = req.body;
-    
-    const updatePet = await pool.query(
-      `UPDATE pets 
-       SET name = $1, species = $2, breed = $3, birth_date = $4, gender = $5, 
-           weight = $6, photo_url = $7, allergies = $8, is_sterilized = $9
-       WHERE id = $10 AND user_id = $11
-       RETURNING *`,
-      [name, species, breed, birth_date, gender, weight, photo_url, allergies, is_sterilized, id, req.user.id]
-=======
-
     const { id } = req.params;
 
     const {
@@ -431,7 +381,6 @@ router.put("/pets/:id", authorization, async (req, res) => {
         id,
         req.user.id
       ]
->>>>>>> develop
     );
 
     if (updatePet.rows.length === 0) {
@@ -439,7 +388,6 @@ router.put("/pets/:id", authorization, async (req, res) => {
     }
 
     return res.json(updatePet.rows[0]);
-
   } catch (err) {
     console.error(err.message);
     return res.status(500).json({ message: "Error al actualizar mascota" });
@@ -451,7 +399,6 @@ router.put("/pets/:id", authorization, async (req, res) => {
 // ========================================
 router.delete("/pets/:id", authorization, async (req, res) => {
   try {
-
     const { id } = req.params;
 
     const deletePet = await pool.query(
@@ -464,7 +411,6 @@ router.delete("/pets/:id", authorization, async (req, res) => {
     }
 
     return res.json({ message: "Mascota eliminada exitosamente" });
-
   } catch (err) {
     console.error(err.message);
     return res.status(500).json({ message: "Error al eliminar mascota" });
@@ -485,40 +431,34 @@ router.get("/is-verify", authorization, async (req, res) => {
 // ========================================
 // RECUPERACIÓN DE CONTRASEÑA
 // ========================================
-
 router.post("/forgot-password", async (req, res) => {
   try {
-
-<<<<<<< HEAD
-=======
     const { email } = req.body;
 
->>>>>>> develop
     const user = await pool.query(
       "SELECT id, full_name, email FROM users WHERE email = $1",
       [email]
     );
 
     if (user.rows.length === 0) {
-<<<<<<< HEAD
-      return res.json({ 
-        message: "Si el email existe, recibirás un link de recuperación" 
+      return res.json({
+        message: "Si el email existe, recibirás un link de recuperación"
       });
-=======
-      return res.json({ message: "Si el email existe, recibirás un link de recuperación" });
->>>>>>> develop
     }
 
     const userId = user.rows[0].id;
     const userName = user.rows[0].full_name;
 
     const resetToken = jwt.sign(
-      { userId: userId, purpose: 'password-reset' },
+      { userId: userId, purpose: "password-reset" },
       process.env.jwtSecret,
       { expiresIn: "1h" }
     );
 
-    const frontendURL = process.env.FRONTEND_URL || "https://pet-health-s659.vercel.app";
+    const frontendURL =
+      process.env.FRONTEND_URL ||
+      "https://pet-health-s659.vercel.app";
+
     const resetLink = `${frontendURL}/reset-password?token=${resetToken}`;
 
     const subject = "🔐 Recupera tu contraseña - PetHealth";
@@ -531,21 +471,26 @@ Este enlace expira en 1 hora.`;
 
     await sendEmail(email, subject, message);
 
-    res.json({ message: "Si el email existe, recibirás un link de recuperación" });
-
+    res.json({
+      message: "Si el email existe, recibirás un link de recuperación"
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ error: "Error del servidor" });
   }
 });
 
+// ========================================
+// RESET PASSWORD
+// ========================================
 router.post("/reset-password", async (req, res) => {
   try {
-
     const { token, newPassword } = req.body;
 
     if (!token || !newPassword) {
-      return res.status(400).json({ error: "Token y contraseña son requeridos" });
+      return res
+        .status(400)
+        .json({ error: "Token y contraseña son requeridos" });
     }
 
     let payload;
@@ -555,25 +500,19 @@ router.post("/reset-password", async (req, res) => {
       return res.status(401).json({ error: "Token inválido o expirado" });
     }
 
-    if (payload.purpose !== 'password-reset') {
+    if (payload.purpose !== "password-reset") {
       return res.status(401).json({ error: "Token inválido" });
     }
 
-<<<<<<< HEAD
     const userId = payload.userId;
 
-=======
->>>>>>> develop
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
     await pool.query(
       "UPDATE users SET password_hash = $1 WHERE id = $2",
-      [hashedPassword, payload.userId]
+      [hashedPassword, userId]
     );
-
-<<<<<<< HEAD
-    console.log('✅ Contraseña actualizada para usuario:', userId);
 
     const user = await pool.query(
       "SELECT full_name, email FROM users WHERE id = $1",
@@ -581,16 +520,25 @@ router.post("/reset-password", async (req, res) => {
     );
 
     if (user.rows.length > 0) {
-      const confirmSubject = "✅ Tu contraseña ha sido actualizada - PetHealth";
-      const confirmMessage = `Hola ${user.rows[0].full_name},\n\nTu contraseña de PetHealth ha sido actualizada exitosamente.\n\nSi no realizaste este cambio, contacta a soporte inmediatamente.\n\n¡Gracias por usar PetHealth! 🐾`;
-      
-      await sendEmail(user.rows[0].email, confirmSubject, confirmMessage);
+      const confirmSubject =
+        "✅ Tu contraseña ha sido actualizada - PetHealth";
+
+      const confirmMessage = `Hola ${user.rows[0].full_name},
+
+Tu contraseña de PetHealth ha sido actualizada exitosamente.
+
+Si no realizaste este cambio, contacta a soporte inmediatamente.
+
+¡Gracias por usar PetHealth! 🐾`;
+
+      await sendEmail(
+        user.rows[0].email,
+        confirmSubject,
+        confirmMessage
+      );
     }
 
-=======
->>>>>>> develop
     res.json({ message: "Contraseña actualizada exitosamente" });
-
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ error: "Error del servidor" });
