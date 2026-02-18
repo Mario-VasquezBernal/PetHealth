@@ -32,7 +32,7 @@ app.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 // ========================================
 
 // 1. Ruta Pública (QR) - Esta sí lleva /api/public porque así la configuramos en el QR
-app.use("/public", publicRoutes);
+app.use("/api/public", publicRoutes);
 
 
 // 2. Rutas del Sistema (Tal cual las tenías)
