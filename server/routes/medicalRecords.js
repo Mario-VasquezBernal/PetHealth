@@ -5,7 +5,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const authorization = require('../middleware/authorization');
-const sendEmail = require('../utils/emailService'); // ⭐ NUEVO
+const sendEmail = require('../utils/emailService');
 
 // ========================================
 // 1️⃣ CREAR registro médico (público con token QR)
@@ -17,8 +17,7 @@ router.post('/create', async (req, res) => {
         treatment,
         notes,
         measured_weight,
-        city,  // ✅ NUEVO CAMPO
-        // ✅ CAMPOS EXISTENTES
+        city,
         vet_id,
         clinic_id,
         visit_reason,
@@ -28,54 +27,46 @@ router.post('/create', async (req, res) => {
     } = req.body;
 
     try {
-        console.log('📝 Creando registro médico:', { 
-            token: token?.substring(0, 10) + '...', 
-            diagnosis, 
-            measured_weight,
-            city,
-            vet_id,
-            clinic_id 
-        });
 
-        // ✅ Validar token QR
+        console.log('📝 Creando registro médico...');
+
+        // Validar token QR
         const qrToken = await pool.query(
             'SELECT * FROM qr_tokens WHERE token = $1 AND expires_at > NOW()',
             [token]
         );
 
         if (qrToken.rows.length === 0) {
-            console.error('❌ Token QR inválido o expirado');
             return res.status(403).json({ error: 'Token QR inválido o expirado' });
         }
 
         const petId = qrToken.rows[0].pet_id;
-        console.log('✅ Token válido para mascota ID:', petId);
 
-        // ⭐ NUEVO — obtener dueño
+        // Obtener dueño
         const ownerQuery = await pool.query(
             'SELECT user_id FROM pets WHERE id = $1',
             [petId]
         );
+
         const ownerId = ownerQuery.rows[0].user_id;
 
-        // ✅ Obtener coordenadas de la clínica si existe
+        // Coordenadas clínica
         let location_lat = null;
         let location_lng = null;
-        
+
         if (clinic_id) {
             const clinicData = await pool.query(
                 'SELECT latitude, longitude FROM clinics WHERE id = $1',
                 [clinic_id]
             );
-            
+
             if (clinicData.rows.length > 0) {
                 location_lat = clinicData.rows[0].latitude;
                 location_lng = clinicData.rows[0].longitude;
-                console.log('📍 Coordenadas de clínica obtenidas:', { location_lat, location_lng });
             }
         }
 
-        // ✅ Crear registro médico CON TODOS LOS CAMPOS + CITY
+        // Crear registro médico
         const recordResult = await pool.query(
             `INSERT INTO medical_records 
              (pet_id, diagnosis, notes, reason, measured_weight, visit_date,
@@ -102,18 +93,17 @@ router.post('/create', async (req, res) => {
         );
 
         const record = recordResult.rows[0];
-        console.log('✅ Registro médico creado con ID:', record.id);
 
         // ========================================
-        // ⭐ NUEVO — Crear cita solo si hay follow_up_date
+        // Crear cita si hay follow_up_date
         // ========================================
         let appointmentCreated = false;
+        let appointmentId = null; // ⭐ IMPORTANTE
 
         if (follow_up_date) {
 
             const appointmentDate = new Date(follow_up_date);
 
-            // Evitar duplicados
             const existing = await pool.query(
                 `SELECT id FROM appointments 
                  WHERE pet_id = $1 
@@ -123,10 +113,11 @@ router.post('/create', async (req, res) => {
 
             if (existing.rows.length === 0) {
 
-                await pool.query(
+                const appointmentResult = await pool.query(
                     `INSERT INTO appointments
                     (user_id, pet_id, vet_id, clinic_id, date, reason, status)
-                    VALUES ($1,$2,$3,$4,$5,$6,'scheduled')`,
+                    VALUES ($1,$2,$3,$4,$5,$6,'scheduled')
+                    RETURNING id`,
                     [
                         ownerId,
                         petId,
@@ -138,31 +129,31 @@ router.post('/create', async (req, res) => {
                 );
 
                 appointmentCreated = true;
-                console.log("✅ Cita creada correctamente");
+                appointmentId = appointmentResult.rows[0].id;
+
+                console.log("✅ Cita creada correctamente:", appointmentId);
 
             } else {
-                console.log("⚠️ Ya existía cita para esa fecha");
+
+                appointmentId = existing.rows[0].id;
+                console.log("⚠️ Ya existía cita:", appointmentId);
+
             }
         }
 
         // ========================================
-        // ✅ Actualizar peso de la mascota
+        // Actualizar peso mascota
         // ========================================
         if (measured_weight && parseFloat(measured_weight) > 0) {
-            console.log('🔄 Actualizando peso de la mascota a:', measured_weight, 'kg');
-            
-            const updateResult = await pool.query(
-                'UPDATE pets SET weight = $1 WHERE id = $2 RETURNING weight',
+
+            await pool.query(
+                'UPDATE pets SET weight = $1 WHERE id = $2',
                 [parseFloat(measured_weight), petId]
             );
-            
-            if (updateResult.rows.length > 0) {
-                console.log('✅ Peso actualizado en tabla pets:', updateResult.rows[0].weight, 'kg');
-            }
         }
 
         // ========================================
-        // ⭐ NUEVO — Email obligatorio
+        // Email
         // ========================================
         try {
 
@@ -187,8 +178,6 @@ Diagnóstico: ${diagnosis || 'No especificado'}
                     message += `\n📅 Próxima revisión: ${new Date(follow_up_date).toLocaleString("es-EC", {
                         timeZone: "America/Guayaquil"
                     })}\n`;
-                } else {
-                    message += `\nNo se requiere una revisión adicional por el momento.\n`;
                 }
 
                 await sendEmail(
@@ -196,19 +185,21 @@ Diagnóstico: ${diagnosis || 'No especificado'}
                     "Registro Médico - PetHealth",
                     message
                 );
-
-                console.log("📧 Email enviado al propietario");
             }
 
         } catch (mailErr) {
             console.error("⚠️ Error enviando email:", mailErr.message);
         }
 
+        // ========================================
+        // RESPUESTA FINAL
+        // ========================================
         res.status(201).json({
             success: true,
             message: 'Registro médico creado exitosamente',
             record,
-            appointmentCreated // ⭐ NUEVO
+            appointmentCreated,
+            appointment_id: appointmentId // ⭐ CLAVE PARA EL QR
         });
 
     } catch (error) {
@@ -219,14 +210,15 @@ Diagnóstico: ${diagnosis || 'No especificado'}
 
 
 // ========================================
-// 2️⃣ OBTENER historial médico de una mascota
+// 2️⃣ OBTENER historial médico
 // ========================================
 router.get('/pet/:petId', authorization, async (req, res) => {
+
     const { petId } = req.params;
     const userId = req.user.id;
 
     try {
-        // Verificar propiedad de la mascota
+
         const petCheck = await pool.query(
             'SELECT id FROM pets WHERE id = $1 AND user_id = $2',
             [petId, userId]
@@ -236,7 +228,6 @@ router.get('/pet/:petId', authorization, async (req, res) => {
             return res.status(403).json({ error: 'No autorizado' });
         }
 
-        // ✅ Incluir city en el SELECT
         const records = await pool.query(
             `SELECT 
                 mr.*,
