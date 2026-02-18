@@ -41,7 +41,7 @@ const ManageVeterinarians = () => {
   const fetchClinics = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API_URL}/api/public/clinics`, { 
+      const res = await axios.get(`${API_URL}/public/clinics`, { 
         headers: { Authorization: `Bearer ${token}` }
       });
       setClinics(res.data || []);

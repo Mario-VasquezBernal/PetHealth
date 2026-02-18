@@ -26,7 +26,8 @@ const QRGenerator = ({ petId, petName, mode = 'READ_ONLY' }) => {
   ==========================*/
   useEffect(() => {
     if (mode === 'WRITE') {
-      fetch(`${API_URL}/api/public/clinics`)
+      fetch(`${API_URL}/public/clinics`)
+
         .then(res => res.json())
         .then(data => setClinics(data || []))
         .catch(err => console.error("Error clinics:", err));
@@ -41,7 +42,8 @@ const QRGenerator = ({ petId, petName, mode = 'READ_ONLY' }) => {
 
     if (selectedClinicId === 'independent') return;
 
-    fetch(`${API_URL}/api/public/veterinarians/by-clinic/${selectedClinicId}`)
+    fetch(`${API_URL}/public/veterinarians/by-clinic/${selectedClinicId}`)
+
       .then(res => res.json())
       .then(data => setVets(data || []))
       .catch(err => console.error("Error vets:", err));
