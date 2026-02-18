@@ -127,6 +127,9 @@ router.post('/medical-records', async (req, res) => {
     const validTemp = temperature ? parseFloat(temperature) : null;
     const validHeartRate = heart_rate ? parseInt(heart_rate) : null;
 
+    // =============================
+    // CREAR REGISTRO MÉDICO
+    // =============================
     const newRecord = await pool.query(
       `
       INSERT INTO medical_records (
@@ -169,7 +172,9 @@ router.post('/medical-records', async (req, res) => {
       ]
     );
 
-    // Actualizar peso de la mascota
+    const record = newRecord.rows[0];
+
+    // Actualizar peso mascota
     if (validWeight) {
       await pool.query(
         'UPDATE pets SET weight = $1 WHERE id = $2',
@@ -177,10 +182,9 @@ router.post('/medical-records', async (req, res) => {
       );
     }
 
-    // =====================================================
-    // NUEVO BLOQUE → crear cita y enviar correo
-    // =====================================================
-
+    // =============================
+    // OBTENER DUEÑO
+    // =============================
     const ownerResult = await pool.query(
       `
       SELECT
@@ -198,12 +202,15 @@ router.post('/medical-records', async (req, res) => {
     const owner = ownerResult.rows[0];
 
     let appointmentDate = null;
+    let appointmentId = null; // ⭐ IMPORTANTE
 
+    // =============================
+    // CREAR CITA
+    // =============================
     if (validNextVisit && owner) {
 
       appointmentDate = new Date(validNextVisit);
 
-      // ⭐ Evitar duplicados
       const existing = await pool.query(
         `SELECT id FROM appointments
          WHERE pet_id = $1
@@ -213,12 +220,13 @@ router.post('/medical-records', async (req, res) => {
 
       if (existing.rows.length === 0) {
 
-        await pool.query(
+        const appointmentResult = await pool.query(
           `
           INSERT INTO appointments
             (user_id, pet_id, vet_id, clinic_id, date, reason, status)
           VALUES
             ($1, $2, NULL, $3, $4, $5, 'scheduled')
+          RETURNING id
           `,
           [
             owner.id,
@@ -229,17 +237,20 @@ router.post('/medical-records', async (req, res) => {
           ]
         );
 
-        console.log("📅 Cita creada correctamente");
+        appointmentId = appointmentResult.rows[0].id;
+
+        console.log("📅 Cita creada correctamente:", appointmentId);
 
       } else {
-        console.log("⚠️ Ya existía cita para esa fecha");
+
+        appointmentId = existing.rows[0].id;
+        console.log("⚠️ Ya existía cita:", appointmentId);
       }
     }
 
-    // =====================================================
-    // EMAIL OBLIGATORIO (SIEMPRE)
-    // =====================================================
-
+    // =============================
+    // EMAIL
+    // =============================
     if (sendEmail && owner?.email) {
 
       let message = `
@@ -273,13 +284,18 @@ No se requiere una revisión adicional por el momento.
       }
     }
 
-    // =====================================================
-
-    res.json(newRecord.rows[0]);
+    // =============================
+    // RESPUESTA FINAL
+    // =============================
+    res.json({
+      ...record,
+      appointment_id: appointmentId // ⭐ CLAVE PARA EL QR
+    });
 
   } catch (error) {
     console.error("🔥 ERROR SQL:", error.message);
     res.status(500).json({ message: 'Error en base de datos: ' + error.message });
   }
 });
+
 module.exports = router;
