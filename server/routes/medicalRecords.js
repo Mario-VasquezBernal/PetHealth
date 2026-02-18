@@ -5,6 +5,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const authorization = require('../middleware/authorization');
+const sendEmail = require('../utils/emailService'); // ⭐ NUEVO
 
 // ========================================
 // 1️⃣ CREAR registro médico (público con token QR)
@@ -31,7 +32,7 @@ router.post('/create', async (req, res) => {
             token: token?.substring(0, 10) + '...', 
             diagnosis, 
             measured_weight,
-            city,  // ✅ AGREGAR AL LOG
+            city,
             vet_id,
             clinic_id 
         });
@@ -49,6 +50,13 @@ router.post('/create', async (req, res) => {
 
         const petId = qrToken.rows[0].pet_id;
         console.log('✅ Token válido para mascota ID:', petId);
+
+        // ⭐ NUEVO — obtener dueño
+        const ownerQuery = await pool.query(
+            'SELECT user_id FROM pets WHERE id = $1',
+            [petId]
+        );
+        const ownerId = ownerQuery.rows[0].user_id;
 
         // ✅ Obtener coordenadas de la clínica si existe
         let location_lat = null;
@@ -83,7 +91,7 @@ router.post('/create', async (req, res) => {
                 measured_weight ? parseFloat(measured_weight) : null,
                 vet_id || null,
                 clinic_id || null,
-                city || null,  // ✅ AGREGAR CITY
+                city || null,
                 visit_reason || null,
                 examination_findings || null,
                 follow_up_date || null,
@@ -96,7 +104,50 @@ router.post('/create', async (req, res) => {
         const record = recordResult.rows[0];
         console.log('✅ Registro médico creado con ID:', record.id);
 
+        // ========================================
+        // ⭐ NUEVO — Crear cita solo si hay follow_up_date
+        // ========================================
+        let appointmentCreated = false;
+
+        if (follow_up_date) {
+
+            const appointmentDate = new Date(follow_up_date);
+
+            // Evitar duplicados
+            const existing = await pool.query(
+                `SELECT id FROM appointments 
+                 WHERE pet_id = $1 
+                 AND date::date = $2::date`,
+                [petId, appointmentDate]
+            );
+
+            if (existing.rows.length === 0) {
+
+                await pool.query(
+                    `INSERT INTO appointments
+                    (user_id, pet_id, vet_id, clinic_id, date, reason, status)
+                    VALUES ($1,$2,$3,$4,$5,$6,'scheduled')`,
+                    [
+                        ownerId,
+                        petId,
+                        vet_id || null,
+                        clinic_id || null,
+                        appointmentDate,
+                        'Revisión de seguimiento veterinario'
+                    ]
+                );
+
+                appointmentCreated = true;
+                console.log("✅ Cita creada correctamente");
+
+            } else {
+                console.log("⚠️ Ya existía cita para esa fecha");
+            }
+        }
+
+        // ========================================
         // ✅ Actualizar peso de la mascota
+        // ========================================
         if (measured_weight && parseFloat(measured_weight) > 0) {
             console.log('🔄 Actualizando peso de la mascota a:', measured_weight, 'kg');
             
@@ -110,10 +161,54 @@ router.post('/create', async (req, res) => {
             }
         }
 
+        // ========================================
+        // ⭐ NUEVO — Email obligatorio
+        // ========================================
+        try {
+
+            const owner = await pool.query(
+                'SELECT email, full_name FROM users WHERE id = $1',
+                [ownerId]
+            );
+
+            const email = owner.rows[0]?.email;
+            const name = owner.rows[0]?.full_name || '';
+
+            if (email) {
+
+                let message = `Hola ${name},
+
+Se ha registrado una nueva consulta médica para tu mascota.
+
+Diagnóstico: ${diagnosis || 'No especificado'}
+`;
+
+                if (follow_up_date) {
+                    message += `\n📅 Próxima revisión: ${new Date(follow_up_date).toLocaleString("es-EC", {
+                        timeZone: "America/Guayaquil"
+                    })}\n`;
+                } else {
+                    message += `\nNo se requiere una revisión adicional por el momento.\n`;
+                }
+
+                await sendEmail(
+                    email,
+                    "Registro Médico - PetHealth",
+                    message
+                );
+
+                console.log("📧 Email enviado al propietario");
+            }
+
+        } catch (mailErr) {
+            console.error("⚠️ Error enviando email:", mailErr.message);
+        }
+
         res.status(201).json({
             success: true,
             message: 'Registro médico creado exitosamente',
-            record
+            record,
+            appointmentCreated // ⭐ NUEVO
         });
 
     } catch (error) {
@@ -122,13 +217,13 @@ router.post('/create', async (req, res) => {
     }
 });
 
+
 // ========================================
 // 2️⃣ OBTENER historial médico de una mascota
 // ========================================
 router.get('/pet/:petId', authorization, async (req, res) => {
     const { petId } = req.params;
     const userId = req.user.id;
-
 
     try {
         // Verificar propiedad de la mascota
