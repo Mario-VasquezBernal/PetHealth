@@ -39,8 +39,8 @@ const VetAccessPanel = () => {
     next_visit: ''
   });
 
-  const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-  const API_URL = `${BASE_URL}/api`;
+ const API_URL = import.meta.env.VITE_API_URL;
+
 
   useEffect(() => {
     if (timestamp) {
@@ -93,19 +93,42 @@ const VetAccessPanel = () => {
 
       if (!response.ok) throw new Error('Error al guardar');
 
-      // 👉 NUEVO → finalizar la cita
-      if (appointmentId) {
-        await fetch(`${API_URL}/appointments/finish/${appointmentId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            requires_review: requiresReview,
-            next_review_date: requiresReview ? formData.next_visit : null
-          })
-        });
-      } else {
-        console.warn("No se recibió appointment_id en el QR");
-      }
+   
+// ✅ Finalizar cita solo si existe
+if (appointmentId) {
+  try {
+    await fetch(`${API_URL}/appointments/finish/${appointmentId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requires_review: requiresReview,
+        next_review_date: requiresReview ? formData.next_visit : null
+      })
+    });
+  } catch (err) {
+    console.error("Error finalizando cita:", err);
+  }
+}
+// ✅ Si no había cita previa pero requiere revisión → crear nueva cita
+if (!appointmentId && requiresReview && formData.next_visit) {
+  try {
+    await fetch(`${API_URL}/appointments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pet_id: id,
+        veterinarian_id: clinicId || null,
+        date: formData.next_visit,
+        reason: formData.diagnosis || "Revisión médica"
+      })
+    });
+  } catch (err) {
+    console.error("Error creando cita de revisión:", err);
+  }
+}
+
+
+
 
       setSuccess(true);
       toast.success('Consulta registrada correctamente');
