@@ -282,4 +282,4 @@ No se requiere una revisión adicional por el momento.
     res.status(500).json({ message: 'Error en base de datos: ' + error.message });
   }
 });
-
+module.exports = router;
