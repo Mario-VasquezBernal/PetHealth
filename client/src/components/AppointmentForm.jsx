@@ -38,7 +38,7 @@ const AppointmentForm = ({ onSuccess }) => {
         const [clinicsRes, vetsRes, petsRes] = await Promise.all([
           axios.get(`${API_URL}/clinics`, config), 
           axios.get(`${API_URL}/veterinarians/directory/all`, config),
-          axios.get(`${API_URL}/pets`, config) // <--- Petición directa (sin dataManager)
+          axios.get(`${API_URL}/auth/pets`, config) // <--- Petición directa (sin dataManager)
         ]);
 
         setClinics(clinicsRes.data.clinics || []);

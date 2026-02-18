@@ -11,6 +11,7 @@ import { Search, MapPin, Building2, Stethoscope, Star } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import MobileHeader from '../components/MobileHeader';
 import { getUserProfile } from '../dataManager';
+import ClinicReviewsModal from '../components/ClinicReviewsModal';
 
 const VetDirectory = () => {
   const [user, setUser] = useState(null);
@@ -22,6 +23,10 @@ const VetDirectory = () => {
   
   // Estado para el buscador
   const [searchTerm, setSearchTerm] = useState('');
+
+  // ✅ NUEVO — estado del modal
+  const [selectedClinic, setSelectedClinic] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -66,6 +71,12 @@ const VetDirectory = () => {
       (vet.clinic_name && vet.clinic_name.toLowerCase().includes(term))
     );
   });
+
+  // ✅ NUEVO — función abrir modal
+  const openReviews = (vet) => {
+    setSelectedClinic(vet);
+    setModalOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -151,7 +162,10 @@ const VetDirectory = () => {
 
                     {/* Botón de Acción */}
                     <div className="mt-6 pt-4 border-t border-gray-50">
-                      <button className="w-full py-2.5 rounded-xl bg-gray-50 text-gray-700 font-bold text-sm hover:bg-blue-600 hover:text-white transition-colors flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => openReviews(vet)}
+                        className="w-full py-2.5 rounded-xl bg-gray-50 text-gray-700 font-bold text-sm hover:bg-blue-600 hover:text-white transition-colors flex items-center justify-center gap-2"
+                      >
                         Ver Perfil y Opiniones
                       </button>
                     </div>
@@ -170,6 +184,13 @@ const VetDirectory = () => {
           )}
         </main>
       </div>
+
+      {/* ✅ NUEVO — Modal de opiniones */}
+      <ClinicReviewsModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        clinic={selectedClinic}
+      />
     </div>
   );
 };
