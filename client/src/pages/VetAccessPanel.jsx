@@ -1,22 +1,28 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { 
-  ClipboardCheck, Save, Stethoscope, Syringe, Calendar, User, Building2, 
-  Activity, CheckCircle, Clock, Thermometer, Heart, AlertTriangle 
+import {
+  ClipboardCheck,
+  Save,
+  Calendar,
+  User,
+  Building2,
+  Activity,
+  CheckCircle,
+  Thermometer,
+  Heart,
+  AlertTriangle
 } from 'lucide-react';
 
 const VetAccessPanel = () => {
-  const { id } = useParams(); // sigue siendo el petId (para el medical record)
+
+  const { id } = useParams();
   const [searchParams] = useSearchParams();
 
-  // CONTEXTO
   const clinicName = searchParams.get('clinic') || 'Consulta General';
   const clinicId = searchParams.get('clinic_id');
   const vetName = searchParams.get('vet') || 'Veterinario';
   const timestamp = searchParams.get('ts');
-
-  // 👉 NUEVO: id real de la cita
   const appointmentId = searchParams.get('appointment_id');
 
   const [pet, setPet] = useState(null);
@@ -24,25 +30,27 @@ const VetAccessPanel = () => {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [expired, setExpired] = useState(false);
-
-  // 👉 NUEVO
   const [requiresReview, setRequiresReview] = useState(false);
 
   const [formData, setFormData] = useState({
     visit_type: 'Consulta General',
-    diagnosis: '', 
-    treatment: '', 
-    weight: '', 
-    temperature: '', 
-    heart_rate: '', 
-    notes: '', 
+    diagnosis: '',
+    treatment: '',
+    weight: '',
+    temperature: '',
+    heart_rate: '',
+    notes: '',
     next_visit: ''
   });
 
- const API_URL = import.meta.env.VITE_API_URL;
+  const API_URL = import.meta.env.VITE_API_URL;
+  const token = localStorage.getItem("token");
 
-
+  // ===============================
+  // VALIDAR QR + CARGAR MASCOTA
+  // ===============================
   useEffect(() => {
+
     if (timestamp) {
       const diffMinutes = (Date.now() - parseInt(timestamp)) / 1000 / 60;
       if (diffMinutes > 20) {
@@ -52,90 +60,110 @@ const VetAccessPanel = () => {
       }
     }
 
-    const fetchPetBasicInfo = async () => {
+    const fetchPet = async () => {
       try {
-        const response = await fetch(`${API_URL}/public/pets/${id}`);
-        if (!response.ok) throw new Error('Error al cargar datos');
-        const data = await response.json();
+
+        const res = await fetch(`${API_URL}/public/pets/${id}`);
+
+        if (!res.ok) throw new Error();
+
+        const data = await res.json();
         setPet(data.pet);
-      } catch (error) {
-        console.error(error);
-        toast.error('No se pudo verificar la mascota');
+
+      } catch (err) {
+        console.error(err);
+        toast.error("No se pudo verificar la mascota");
       } finally {
         setLoading(false);
       }
     };
 
-    if (id) fetchPetBasicInfo();
+    if (id) fetchPet();
+
   }, [id, API_URL, timestamp]);
 
+  // ===============================
+  // SUBMIT
+  // ===============================
   const handleSubmit = async (e) => {
+
     e.preventDefault();
+
+    if (!token) {
+      toast.error("Sesión expirada. Inicie sesión nuevamente.");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
 
       const payload = {
         pet_id: id,
-
         clinic_name: clinicName,
         clinic_id: clinicId,
         veterinarian_name: vetName,
-
         ...formData
       };
 
+      // GUARDAR HISTORIAL
       const response = await fetch(`${API_URL}/public/medical-records`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
-      if (!response.ok) throw new Error('Error al guardar');
+      if (!response.ok) throw new Error();
 
-   
-// ✅ Finalizar cita solo si existe
-if (appointmentId) {
-  try {
-    await fetch(`${API_URL}/appointments/finish/${appointmentId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        requires_review: requiresReview,
-        next_review_date: requiresReview ? formData.next_visit : null
-      })
-    });
-  } catch (err) {
-    console.error("Error finalizando cita:", err);
-  }
-}
-// ✅ Si no había cita previa pero requiere revisión → crear nueva cita
-if (!appointmentId && requiresReview && formData.next_visit) {
-  try {
-    await fetch(`${API_URL}/appointments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        pet_id: id,
-        veterinarian_id: clinicId || null,
-        date: formData.next_visit,
-        reason: formData.diagnosis || "Revisión médica"
-      })
-    });
-  } catch (err) {
-    console.error("Error creando cita de revisión:", err);
-  }
-}
+      // ===========================
+      // FINALIZAR CITA EXISTENTE
+      // ===========================
+      if (appointmentId) {
 
+        await fetch(`${API_URL}/appointments/finish/${appointmentId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            token
+          },
+          body: JSON.stringify({
+            requires_review: requiresReview,
+            next_review_date: requiresReview ? formData.next_visit : null
+          })
+        });
 
+      }
 
+      // ===========================
+      // CREAR CITA SI NO EXISTE
+      // ===========================
+      if (!appointmentId && requiresReview && formData.next_visit) {
+
+        await fetch(`${API_URL}/appointments`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            token
+          },
+          body: JSON.stringify({
+            pet_id: id,
+            veterinarian_id: clinicId || null,
+            date: formData.next_visit,
+            reason: formData.diagnosis || "Revisión médica"
+          })
+        });
+
+      }
 
       setSuccess(true);
-      toast.success('Consulta registrada correctamente');
+      toast.success("Consulta registrada correctamente");
 
-    } catch (error) {
-      console.error(error);
-      toast.error('Error al guardar. Intente nuevamente.');
+    } catch (err) {
+
+      console.error(err);
+      toast.error("Error al guardar");
+
+    } finally {
       setSubmitting(false);
     }
   };
@@ -143,190 +171,145 @@ if (!appointmentId && requiresReview && formData.next_visit) {
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  // ===============================
+  // UI STATES
+  // ===============================
+
   if (loading)
-    return <div className="h-screen flex items-center justify-center bg-gray-50">Verificando pase...</div>;
+    return <div className="h-screen flex items-center justify-center">Verificando pase...</div>;
 
   if (expired)
     return <div className="h-screen flex items-center justify-center text-red-600 font-bold">Código QR Expirado</div>;
 
   if (success)
     return (
-      <div className="h-screen flex items-center justify-center bg-green-50 flex-col p-6 text-center animate-in zoom-in">
+      <div className="h-screen flex items-center justify-center bg-green-50 flex-col">
         <CheckCircle className="w-24 h-24 text-green-600 mb-4" />
-        <h1 className="text-3xl font-black text-gray-900 mb-2">¡Consulta Guardada!</h1>
-        <p className="text-gray-500">Se ha registrado la consulta correctamente.</p>
+        <h1 className="text-2xl font-bold">¡Consulta Guardada!</h1>
+        <p className="text-gray-500">Se registró correctamente</p>
       </div>
     );
 
-  return (
-    <div className="min-h-screen bg-green-50/50 pb-12">
+  // ===============================
+  // FORM
+  // ===============================
 
-      <div className="bg-green-700 text-white p-6 shadow-lg">
+  return (
+    <div className="min-h-screen bg-green-50 pb-12">
+
+      <div className="bg-green-700 text-white p-6">
         <div className="max-w-2xl mx-auto">
+
           <div className="flex items-center gap-4 mb-4">
-            <div className="bg-white/20 p-2 rounded-full">
-              <ClipboardCheck size={24} className="text-white" />
-            </div>
+            <ClipboardCheck size={24} />
             <div>
               <h1 className="text-xl font-bold">Nueva Consulta</h1>
               <p className="text-green-100 text-sm">Sesión Segura Activa</p>
             </div>
           </div>
 
-          <div className="bg-black/20 rounded-xl p-4 flex flex-col sm:flex-row gap-4 border border-white/10 backdrop-blur-sm">
-            <div className="flex items-center gap-3">
-              <div className="bg-white/10 p-2 rounded-lg">
-                <Building2 size={18} className="text-green-300"/>
-              </div>
+          <div className="bg-black/20 rounded-xl p-4 flex gap-4">
+
+            <div className="flex items-center gap-2">
+              <Building2 size={18}/>
               <div>
-                <p className="text-xs text-green-200 uppercase font-bold tracking-wider">Lugar de Atención</p>
-                <p className="font-bold text-lg">{clinicName}</p>
+                <p className="text-xs">Lugar</p>
+                <p className="font-bold">{clinicName}</p>
               </div>
             </div>
 
-            <div className="hidden sm:block w-px bg-white/20"></div>
-
-            <div className="flex items-center gap-3">
-              <div className="bg-white/10 p-2 rounded-lg">
-                <User size={18} className="text-green-300"/>
-              </div>
+            <div className="flex items-center gap-2">
+              <User size={18}/>
               <div>
-                <p className="text-xs text-green-200 uppercase font-bold tracking-wider">Profesional</p>
-                <p className="font-bold text-lg">{vetName}</p>
+                <p className="text-xs">Profesional</p>
+                <p className="font-bold">{vetName}</p>
               </div>
             </div>
+
           </div>
+
         </div>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 -mt-6">
-        <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 border border-gray-100">
 
-          <div className="mb-6 flex items-center gap-3 pb-6 border-b border-gray-100">
+        <div className="bg-white rounded-2xl shadow p-6">
+
+          <div className="mb-6 flex items-center gap-3">
+
             <img
               src={pet?.photo_url || 'https://via.placeholder.com/100'}
               alt="Mascota"
-              className="w-16 h-16 rounded-full object-cover border-2 border-green-100"
+              className="w-16 h-16 rounded-full"
             />
+
             <div>
-              <h2 className="text-xl font-bold text-gray-900">{pet?.name}</h2>
-              <p className="text-gray-500 text-sm">{pet?.breed}</p>
+              <h2 className="text-xl font-bold">{pet?.name}</h2>
+              <p className="text-gray-500">{pet?.breed}</p>
             </div>
+
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
 
-            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-              <label className="text-xs font-bold text-blue-700 uppercase tracking-wide mb-2 block">
-                Tipo de Visita
-              </label>
-              <div className="flex gap-2 flex-wrap">
-                {['Consulta General', 'Vacunación', 'Control', 'Emergencia', 'Cirugía'].map(type => (
-                  <label
-                    key={type}
-                    className={`cursor-pointer px-3 py-1.5 rounded-lg border transition-all text-sm font-medium ${
-                      formData.visit_type === type
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-md'
-                        : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="visit_type"
-                      value={type}
-                      checked={formData.visit_type === type}
-                      onChange={handleChange}
-                      className="hidden"
-                    />
-                    {type === 'Emergencia' && <AlertTriangle size={14} className="inline mr-1 mb-0.5"/>}
-                    {type}
-                  </label>
-                ))}
-              </div>
-            </div>
+            <input
+              type="text"
+              name="diagnosis"
+              placeholder="Diagnóstico"
+              required
+              value={formData.diagnosis}
+              onChange={handleChange}
+              className="w-full p-3 border rounded-xl"
+            />
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                  <Activity size={16} className="text-green-600"/> Peso (kg) *
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  name="weight"
-                  required
-                  value={formData.weight}
-                  onChange={handleChange}
-                  className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-500 outline-none font-bold text-gray-800"
-                />
-              </div>
+            <textarea
+              name="treatment"
+              placeholder="Tratamiento"
+              required
+              value={formData.treatment}
+              onChange={handleChange}
+              className="w-full p-3 border rounded-xl"
+            />
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                  <Thermometer size={16} className="text-orange-500"/> Temp (°C)
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  name="temperature"
-                  value={formData.temperature}
-                  onChange={handleChange}
-                  className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-500 outline-none"
-                />
-              </div>
+            <div className="grid grid-cols-3 gap-4">
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                  <Heart size={16} className="text-red-500"/> Frec. Cardíaca
-                </label>
-                <input
-                  type="number"
-                  name="heart_rate"
-                  value={formData.heart_rate}
-                  onChange={handleChange}
-                  className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-500 outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                <Stethoscope size={16} className="text-blue-600"/> Diagnóstico Principal *
-              </label>
               <input
-                type="text"
-                name="diagnosis"
-                required
-                value={formData.diagnosis}
+                type="number"
+                name="weight"
+                placeholder="Peso"
+                value={formData.weight}
                 onChange={handleChange}
-                className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                className="p-3 border rounded-xl"
               />
+
+              <input
+                type="number"
+                name="temperature"
+                placeholder="Temp"
+                value={formData.temperature}
+                onChange={handleChange}
+                className="p-3 border rounded-xl"
+              />
+
+              <input
+                type="number"
+                name="heart_rate"
+                placeholder="Pulso"
+                value={formData.heart_rate}
+                onChange={handleChange}
+                className="p-3 border rounded-xl"
+              />
+
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                <Syringe size={16} className="text-purple-600"/> Tratamiento / Procedimiento *
-              </label>
-              <textarea
-                name="treatment"
-                required
-                rows="4"
-                value={formData.treatment}
-                onChange={handleChange}
-                className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500 outline-none resize-none"
-              />
-            </div>
+            <div className="bg-yellow-50 p-4 rounded-xl">
 
-            {/* NUEVO BLOQUE */}
-            <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200 space-y-3">
-              <label className="text-sm font-bold text-yellow-800 flex items-center gap-2">
-                <Calendar size={16}/> ¿Requiere revisión?
-              </label>
+              <label>¿Requiere revisión?</label>
 
               <select
                 value={requiresReview ? "yes" : "no"}
                 onChange={(e) => setRequiresReview(e.target.value === "yes")}
-                className="w-full p-3 bg-white rounded-xl border border-yellow-300 focus:ring-2 focus:ring-yellow-500 outline-none"
+                className="w-full p-3 border rounded-xl mt-2"
               >
                 <option value="no">No</option>
                 <option value="yes">Sí</option>
@@ -339,25 +322,26 @@ if (!appointmentId && requiresReview && formData.next_visit) {
                   value={formData.next_visit}
                   onChange={handleChange}
                   required
-                  className="w-full p-3 bg-white rounded-xl border border-yellow-300 focus:ring-2 focus:ring-yellow-500 outline-none"
+                  className="w-full p-3 border rounded-xl mt-2"
                 />
               )}
+
             </div>
 
-            <div className="pt-4">
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {submitting ? 'Guardando...' : 'Finalizar y Guardar Consulta'}
-                <Save size={20} />
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full py-4 bg-green-600 text-white rounded-xl font-bold"
+            >
+              {submitting ? "Guardando..." : "Finalizar y Guardar Consulta"}
+            </button>
 
           </form>
+
         </div>
+
       </div>
+
     </div>
   );
 };
