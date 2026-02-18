@@ -180,34 +180,45 @@ router.post('/medical-records', async (req, res) => {
     // =====================================================
     // NUEVO BLOQUE → crear cita y enviar correo
     // =====================================================
-    if (validNextVisit) {
 
-      const ownerResult = await pool.query(
-        `
-        SELECT
-          u.id,
-          u.email,
-          u.full_name,
-          p.name AS pet_name
-        FROM pets p
-        JOIN users u ON u.id = p.user_id
-        WHERE p.id = $1
-        `,
-        [pet_id]
+    const ownerResult = await pool.query(
+      `
+      SELECT
+        u.id,
+        u.email,
+        u.full_name,
+        p.name AS pet_name
+      FROM pets p
+      JOIN users u ON u.id = p.user_id
+      WHERE p.id = $1
+      `,
+      [pet_id]
+    );
+
+    const owner = ownerResult.rows[0];
+
+    let appointmentDate = null;
+
+    if (validNextVisit && owner) {
+
+      appointmentDate = new Date(validNextVisit);
+
+      // ⭐ Evitar duplicados
+      const existing = await pool.query(
+        `SELECT id FROM appointments
+         WHERE pet_id = $1
+         AND date::date = $2::date`,
+        [pet_id, appointmentDate]
       );
 
-      const owner = ownerResult.rows[0];
-
-      if (owner) {
-
-        const appointmentDate = new Date(validNextVisit);
+      if (existing.rows.length === 0) {
 
         await pool.query(
           `
           INSERT INTO appointments
             (user_id, pet_id, vet_id, clinic_id, date, reason, status)
           VALUES
-            ($1, $2, NULL, $3, $4, $5, 'Pendiente')
+            ($1, $2, NULL, $3, $4, $5, 'scheduled')
           `,
           [
             owner.id,
@@ -218,31 +229,50 @@ router.post('/medical-records', async (req, res) => {
           ]
         );
 
-        // Enviar correo
-        if (sendEmail && owner.email) {
+        console.log("📅 Cita creada correctamente");
 
-          const subject = 'Nueva cita de revisión - PetHealth';
-
-          const message = `
-Hola ${owner.full_name || ''},
-
-El veterinario ha programado una nueva revisión para tu mascota.
-
-Mascota: ${owner.pet_name}
-Veterinario: ${veterinarian_name || 'No especificado'}
-Fecha de revisión: ${appointmentDate.toLocaleString()}
-
-PetHealth
-          `;
-
-          try {
-            await sendEmail(owner.email, subject, message);
-          } catch (mailErr) {
-            console.error('Error enviando correo de revisión:', mailErr.message);
-          }
-        }
+      } else {
+        console.log("⚠️ Ya existía cita para esa fecha");
       }
     }
+
+    // =====================================================
+    // EMAIL OBLIGATORIO (SIEMPRE)
+    // =====================================================
+
+    if (sendEmail && owner?.email) {
+
+      let message = `
+Hola ${owner.full_name || ''},
+
+Se ha registrado una consulta médica para tu mascota ${owner.pet_name}.
+`;
+
+      if (appointmentDate) {
+        message += `
+
+📅 Próxima revisión programada:
+${appointmentDate.toLocaleString()}
+`;
+      } else {
+        message += `
+
+No se requiere una revisión adicional por el momento.
+`;
+      }
+
+      try {
+        await sendEmail(
+          owner.email,
+          'Registro médico - PetHealth',
+          message
+        );
+        console.log("📧 Correo enviado correctamente");
+      } catch (mailErr) {
+        console.error('Error enviando correo:', mailErr.message);
+      }
+    }
+
     // =====================================================
 
     res.json(newRecord.rows[0]);
@@ -253,4 +283,3 @@ PetHealth
   }
 });
 
-module.exports = router;
