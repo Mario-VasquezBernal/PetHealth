@@ -32,7 +32,7 @@ router.get("/", authorization, async (req, res) => {
       LEFT JOIN veterinarians v ON a.vet_id = v.id 
       LEFT JOIN clinics c ON a.clinic_id = c.id
       LEFT JOIN veterinarian_ratings r ON a.id = r.appointment_id
-      WHERE a.user_id = $1 AND a.status != 'Cancelada'
+      WHERE a.user_id = $1 AND a.status != 'cancelled'  -- ✅ FIX
       ORDER BY a.date DESC`,
       [req.user.id]
     );
@@ -89,7 +89,7 @@ router.post("/", authorization, async (req, res) => {
           reason,
           status
        ) 
-       VALUES ($1, $2, $3, $4, $5, $6, 'Pendiente') 
+       VALUES ($1, $2, $3, $4, $5, $6, 'scheduled') 
        RETURNING *`,
       [req.user.id, pet_id, finalVetId, clinic_id, appointmentDate, reason]
     );
@@ -104,15 +104,15 @@ router.post("/", authorization, async (req, res) => {
       const { email, full_name } = userResult.rows[0] || {};
 
       if (email) {
-  const subject = "Cita Agendada - PetHealth";
-  const message = `Hola ${full_name || ""}, tu cita ha sido registrada para el ${appointmentDate.toLocaleString("es-EC", {
-  timeZone: "America/Guayaquil"
-})
-}. Motivo: ${reason || "Control general"}.`;
+        const subject = "Cita Agendada - PetHealth";
+        const message = `Hola ${full_name || ""}, tu cita ha sido registrada para el ${appointmentDate.toLocaleString("es-EC", {
+          timeZone: "America/Guayaquil"
+        })
+        }. Motivo: ${reason || "Control general"}.`;
 
-  sendEmail(email, subject, message)
-    .catch(e => console.error("Error enviando email:", e.message));
-}
+        sendEmail(email, subject, message)
+          .catch(e => console.error("Error enviando email:", e.message));
+      }
 
     } catch (emailErr) {
       console.error("Error enviando email:", emailErr.message);
@@ -135,7 +135,7 @@ router.delete("/:id", authorization, async (req, res) => {
     const { id } = req.params;
 
     await pool.query(
-      "UPDATE appointments SET status = 'Cancelada' WHERE id = $1 AND user_id = $2",
+      "UPDATE appointments SET status = 'cancelled' WHERE id = $1 AND user_id = $2", // ✅ FIX
       [id, req.user.id]
     );
 
@@ -168,7 +168,7 @@ router.put("/finish/:id", authorization, async (req, res) => {
       SET
         requires_review = $1,
         next_review_date = $2,
-        status = 'Finalizada'
+        status = 'completed'   -- ✅ FIX
       WHERE id = $3
       RETURNING *
       `,
@@ -212,7 +212,6 @@ requiere una nueva revisión.
 ${new Date(next_review_date).toLocaleString("es-EC", {
   timeZone: "America/Guayaquil"
 })}
-
 
 Puedes ver el detalle ingresando a la aplicación.
 

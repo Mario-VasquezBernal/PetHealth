@@ -22,6 +22,7 @@ router.get('/directory/all', authorization, async (req, res) => {
         v.specialty, 
         v.phone,
         v.email,
+        v.clinic_id,  
         c.name as clinic_name,
         c.latitude,
         c.longitude,
