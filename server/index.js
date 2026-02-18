@@ -32,7 +32,8 @@ app.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 // ========================================
 
 // 1. Ruta Pública (QR) - Esta sí lleva /api/public porque así la configuramos en el QR
-app.use("/api/public", publicRoutes); 
+app.use("/public", publicRoutes);
+
 
 // 2. Rutas del Sistema (Tal cual las tenías)
 app.use("/auth", require("./routes/auth"));
@@ -59,8 +60,6 @@ app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
   initCronJobs();
 
-  startAppointmentReminderCron();   // ← ÚNICA LÍNEA AGREGADA
-
-  startAppointmentReminderCron();
+ startAppointmentReminderCron();
 
 });
