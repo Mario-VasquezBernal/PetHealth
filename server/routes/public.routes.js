@@ -6,7 +6,6 @@ const pool = require('../db');
 const sendEmail = require('../utils/emailService');
 
 
-
 // 1. GET: Lista de Clínicas
 router.get('/clinics', async (req, res) => {
   try {
@@ -21,26 +20,25 @@ router.get('/clinics', async (req, res) => {
 });
 
 
-
 // 2. GET: Veterinarios por Clínica
 router.get('/veterinarians/by-clinic/:clinicId', async (req, res) => {
   try {
     const { clinicId } = req.params;
-    let query = '';
+    let query  = '';
     let params = [];
 
     if (clinicId === 'independent') {
       query = `
-        SELECT id, name, specialty 
-        FROM veterinarians 
-        WHERE clinic_id IS NULL 
+        SELECT id, name, specialty
+        FROM veterinarians
+        WHERE clinic_id IS NULL
         ORDER BY name ASC
       `;
     } else {
       query = `
-        SELECT id, name, specialty 
-        FROM veterinarians 
-        WHERE clinic_id = $1 
+        SELECT id, name, specialty
+        FROM veterinarians
+        WHERE clinic_id = $1
         ORDER BY name ASC
       `;
       params = [clinicId];
@@ -55,8 +53,7 @@ router.get('/veterinarians/by-clinic/:clinicId', async (req, res) => {
 });
 
 
-
-// 3. GET: Datos de Mascota
+// 3. GET: Datos de Mascota (historial público)
 router.get('/pets/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -84,18 +81,14 @@ router.get('/pets/:id', async (req, res) => {
 });
 
 
-
 // 4. POST: Guardar Consulta + crear cita + email
 router.post('/medical-records', async (req, res) => {
 
   console.log("📝 Payload recibido:", req.body);
 
   try {
-    // ✅ CAMBIO: Se recibe 'token' QR para resolver pet_id, clinic_name y veterinarian_name
-    // El frontend (VetQRAccess) ya no envía pet_id directamente
     const {
       token: qrToken,
-      clinic_id,
       diagnosis,
       treatment,
       recorded_weight,
@@ -103,26 +96,33 @@ router.post('/medical-records', async (req, res) => {
       next_visit,
       visit_type,
       temperature,
-      heart_rate
+      heart_rate,
+      // estos pueden venir del frontend como fallback
+      clinic_name:          frontendClinicName,
+      veterinarian_name:    frontendVetName,
     } = req.body;
 
-    // ✅ CAMBIO: Resolver pet_id, vet_name y clinic_name desde el token QR
-    let pet_id = req.body.pet_id || null;
-    let clinic_name = req.body.clinic_name || null;
-    let veterinarian_name = req.body.veterinarian_name || null;
-
-    // ✅ CAMBIO: Declarar IDs reales del token para usarlos en el INSERT de la cita
-    let resolved_vet_id = null;
+    let pet_id            = req.body.pet_id || null;
+    let clinic_name       = frontendClinicName  || null;
+    let veterinarian_name = frontendVetName     || null;
+    let resolved_vet_id   = null;
     let resolved_clinic_id = null;
 
-    if (qrToken && !pet_id) {
+    // =============================
+    // RESOLVER DATOS DESDE EL TOKEN QR
+    // =============================
+    if (qrToken) {
       const tokenResult = await pool.query(
-        // ✅ CAMBIO: Agregar qt.vet_id y qt.clinic_id al SELECT del token
-        `SELECT qt.pet_id, qt.vet_id, qt.clinic_id,
-                v.name AS vet_name, c.name AS clinic_name
+        `SELECT
+           qt.pet_id,
+           qt.vet_id,
+           qt.clinic_id,
+           v.name    AS vet_name,
+           c.name    AS clinic_name,
+           c.address AS clinic_address
          FROM qr_tokens qt
          LEFT JOIN veterinarians v ON v.id = qt.vet_id
-         LEFT JOIN clinics c ON c.id = qt.clinic_id
+         LEFT JOIN clinics       c ON c.id = qt.clinic_id
          WHERE qt.token = $1 AND qt.expires_at > NOW()`,
         [qrToken]
       );
@@ -131,27 +131,38 @@ router.post('/medical-records', async (req, res) => {
         return res.status(401).json({ message: 'Token QR inválido o expirado' });
       }
 
-      pet_id            = tokenResult.rows[0].pet_id;
-      resolved_vet_id    = tokenResult.rows[0].vet_id;    // ✅ CAMBIO: ID real del vet
-      resolved_clinic_id = tokenResult.rows[0].clinic_id; // ✅ CAMBIO: ID real de la clínica
-      veterinarian_name = tokenResult.rows[0].vet_name || veterinarian_name;
-      clinic_name       = tokenResult.rows[0].clinic_name || clinic_name;
+      const t = tokenResult.rows[0];
+
+      // ✅ Siempre sobreescribir con los datos de la BD (más confiables que los del frontend)
+      pet_id             = t.pet_id;
+      resolved_vet_id    = t.vet_id;
+      resolved_clinic_id = t.clinic_id;
+      veterinarian_name  = t.vet_name    || veterinarian_name;
+      clinic_name        = t.clinic_name || clinic_name;
+
+      console.log("🔍 resolved_vet_id:",    resolved_vet_id);
+      console.log("🔍 resolved_clinic_id:", resolved_clinic_id);
+      console.log("🔍 veterinarian_name:",  veterinarian_name);
+      console.log("🔍 clinic_name:",        clinic_name);
     }
 
     if (!pet_id) {
       return res.status(400).json({ message: 'pet_id requerido' });
     }
 
-    let lat = null;
-    let lng = null;
+    // =============================
+    // COORDENADAS DE CLÍNICA
+    // ✅ CAMBIO: usar resolved_clinic_id (del token) en lugar de clinic_id del body
+    // =============================
+    let lat    = null;
+    let lng    = null;
     let mapUrl = null;
 
-    // Coordenadas de clínica
-    if (clinic_id && clinic_id !== 'independent' && clinic_id !== 'other') {
+    if (resolved_clinic_id) {
       const clinicData = await pool.query(
         `SELECT latitude, longitude, google_maps_url
          FROM clinics WHERE id = $1`,
-        [clinic_id]
+        [resolved_clinic_id]
       );
 
       if (clinicData.rows.length > 0) {
@@ -166,38 +177,32 @@ router.post('/medical-records', async (req, res) => {
       }
     }
 
-    const validNextVisit = next_visit === "" ? null : next_visit;
-    const validWeight = recorded_weight ? parseFloat(recorded_weight) : null;
-    const validTemp = temperature ? parseFloat(temperature) : null;
-    const validHeartRate = heart_rate ? parseInt(heart_rate) : null;
+    const validNextVisit = (next_visit && next_visit !== '') ? next_visit : null;
+
+    // ✅ fix validWeight — parseFloat(0) era falsy, ahora se guarda correctamente
+    const validWeight = (
+      recorded_weight !== null &&
+      recorded_weight !== ''   &&
+      recorded_weight !== undefined
+    ) ? parseFloat(recorded_weight) : null;
+
+    const validTemp      = temperature ? parseFloat(temperature) : null;
+    const validHeartRate = heart_rate  ? parseInt(heart_rate)    : null;
 
     // =============================
     // CREAR REGISTRO MÉDICO
     // =============================
     const newRecord = await pool.query(
-      `
-      INSERT INTO medical_records (
-        pet_id,
-        clinic_name,
-        veterinarian_name,
-        diagnosis,
-        treatment,
-        recorded_weight,
-        notes,
-        next_visit_date,
-        visit_type,
-        temperature,
-        heart_rate,
-        clinic_lat,
-        clinic_lng,
-        clinic_map_url,
+      `INSERT INTO medical_records (
+        pet_id, clinic_name, veterinarian_name,
+        diagnosis, treatment, recorded_weight,
+        notes, next_visit_date, visit_type,
+        temperature, heart_rate,
+        clinic_lat, clinic_lng, clinic_map_url,
         visit_date
       )
-      VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW()
-      )
-      RETURNING *
-      `,
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW())
+      RETURNING *`,
       [
         pet_id,
         clinic_name,
@@ -205,9 +210,9 @@ router.post('/medical-records', async (req, res) => {
         diagnosis,
         treatment,
         validWeight,
-        notes,
+        notes         || null,
         validNextVisit,
-        visit_type || 'Consulta General',
+        visit_type    || 'Consulta General',
         validTemp,
         validHeartRate,
         lat,
@@ -218,8 +223,9 @@ router.post('/medical-records', async (req, res) => {
 
     const record = newRecord.rows[0];
 
-    // Actualizar peso mascota
-    if (validWeight) {
+    // Actualizar peso de la mascota
+    // ✅ CAMBIO: validWeight >= 0 (antes 'if (validWeight)' excluía el 0)
+    if (validWeight !== null) {
       await pool.query(
         'UPDATE pets SET weight = $1 WHERE id = $2',
         [validWeight, pet_id]
@@ -230,32 +236,24 @@ router.post('/medical-records', async (req, res) => {
     // OBTENER DUEÑO
     // =============================
     const ownerResult = await pool.query(
-      `
-      SELECT
-        u.id,
-        u.email,
-        u.full_name,
-        p.name AS pet_name
-      FROM pets p
-      JOIN users u ON u.id = p.user_id
-      WHERE p.id = $1
-      `,
+      `SELECT u.id, u.email, u.full_name, p.name AS pet_name
+       FROM pets p
+       JOIN users u ON u.id = p.user_id
+       WHERE p.id = $1`,
       [pet_id]
     );
 
     const owner = ownerResult.rows[0];
 
     let appointmentDate = null;
-    let appointmentId = null;
+    let appointmentId   = null;
 
     // =============================
     // CREAR CITA
     // =============================
     if (validNextVisit && owner) {
-
       appointmentDate = new Date(validNextVisit);
 
-      // Ignorar canceladas al buscar duplicados
       const existing = await pool.query(
         `SELECT id FROM appointments
          WHERE pet_id = $1
@@ -265,27 +263,25 @@ router.post('/medical-records', async (req, res) => {
       );
 
       if (existing.rows.length === 0) {
-
         const appointmentResult = await pool.query(
-          `
-          INSERT INTO appointments
-            (user_id, pet_id, vet_id, clinic_id, date, reason, status)
-          VALUES
-            ($1, $2, $3, $4, $5, $6, 'scheduled')
-          RETURNING id
-          `,
+          `INSERT INTO appointments
+             (user_id, pet_id, vet_id, clinic_id, date, reason, status)
+           VALUES ($1, $2, $3, $4, $5, $6, 'scheduled')
+           RETURNING id`,
           [
             owner.id,
             pet_id,
-            resolved_vet_id || null,                                       // ✅ CAMBIO: vet real del token QR (antes era NULL fijo)
-            resolved_clinic_id || (clinic_id === 'independent' ? null : clinic_id), // ✅ CAMBIO: clinic real del token QR
+            resolved_vet_id    || null, // ✅ vet real del token QR
+            resolved_clinic_id || null, // ✅ clinic real del token QR
             appointmentDate,
             'Revisión programada por el veterinario'
           ]
         );
 
         appointmentId = appointmentResult.rows[0].id;
-        console.log("📅 Cita creada correctamente:", appointmentId);
+        console.log("📅 Cita creada:", appointmentId,
+          "| vet_id:", resolved_vet_id,
+          "| clinic_id:", resolved_clinic_id);
 
       } else {
         appointmentId = existing.rows[0].id;
@@ -297,35 +293,17 @@ router.post('/medical-records', async (req, res) => {
     // EMAIL
     // =============================
     if (sendEmail && owner?.email) {
-
-      let message = `
-Hola ${owner.full_name || ''},
-
-Se ha registrado una consulta médica para tu mascota ${owner.pet_name}.
-`;
+      let message = `Hola ${owner.full_name || ''},\n\nSe ha registrado una consulta médica para tu mascota ${owner.pet_name}.\n`;
 
       if (appointmentDate) {
-        message += `
-
-
-📅 Próxima revisión programada:
-${appointmentDate.toLocaleString()}
-`;
+        message += `\n📅 Próxima revisión: ${appointmentDate.toLocaleString()}`;
       } else {
-        message += `
-
-
-No se requiere una revisión adicional por el momento.
-`;
+        message += `\nNo se requiere revisión adicional por el momento.`;
       }
 
       try {
-        await sendEmail(
-          owner.email,
-          'Registro médico - PetHealth',
-          message
-        );
-        console.log("📧 Correo enviado correctamente");
+        await sendEmail(owner.email, 'Registro médico - PetHealth', message);
+        console.log("📧 Correo enviado");
       } catch (mailErr) {
         console.error('Error enviando correo:', mailErr.message);
       }
@@ -334,15 +312,13 @@ No se requiere una revisión adicional por el momento.
     // =============================
     // RESPUESTA FINAL
     // =============================
-    res.json({
-      ...record,
-      appointment_id: appointmentId
-    });
+    res.json({ ...record, appointment_id: appointmentId });
 
   } catch (error) {
     console.error("🔥 ERROR SQL:", error.message);
     res.status(500).json({ message: 'Error en base de datos: ' + error.message });
   }
 });
+
 
 module.exports = router;

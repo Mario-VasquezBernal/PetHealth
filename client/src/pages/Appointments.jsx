@@ -5,29 +5,28 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import {
-  Calendar, MapPin, Stethoscope, X, Star, Pencil, Trash2, ClipboardList
+  Calendar, MapPin, Stethoscope, X, Star, Pencil, Trash2, ClipboardList, RefreshCw // ✅ CAMBIO: agregar RefreshCw
 } from 'lucide-react';
 
 // Componentes
 import Sidebar from '../components/Sidebar';
 import MobileHeader from '../components/MobileHeader';
-import AppointmentForm from "../components/AppointmentForm"; 
+import AppointmentForm from "../components/AppointmentForm";
 import RatingModal from '../components/RatingModal';
 import StarRating from '../components/StarRating';
 
 // Data
 import { getAppointments, deleteAppointment, getUserProfile } from '../dataManager';
 
-
 const Appointments = () => {
-  const [user, setUser]                   = useState(null);
-  const [sidebarOpen, setSidebarOpen]     = useState(false);
-  const [appointments, setAppointments]   = useState([]);
+  const [user, setUser]                 = useState(null);
+  const [sidebarOpen, setSidebarOpen]   = useState(false);
+  const [appointments, setAppointments] = useState([]);
 
   // Estados para Modal de Calificación
-  const [isRatingModalOpen, setIsRatingModalOpen]                       = useState(false);
+  const [isRatingModalOpen, setIsRatingModalOpen]                         = useState(false);
   const [selectedVeterinarianForRating, setSelectedVeterinarianForRating] = useState(null);
-  const [selectedAppointmentId, setSelectedAppointmentId]               = useState(null);
+  const [selectedAppointmentId, setSelectedAppointmentId]                 = useState(null);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -40,11 +39,18 @@ const Appointments = () => {
       ]);
 
       const formattedAppointments = Array.isArray(appointmentsData)
-        ? appointmentsData.map(appt => ({
-            ...appt,
-            formatted_date: new Date(appt.raw_date || appt.date).toLocaleDateString() + ' ' +
-                            new Date(appt.raw_date || appt.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          }))
+        ? appointmentsData.map(appt => {
+            // ✅ CAMBIO: proteger fecha inválida — antes new Date(null) daba "Invalid Date"
+            const rawDate = appt.raw_date || appt.date;
+            const dateObj = rawDate ? new Date(rawDate) : null;
+            const isValid = dateObj && !isNaN(dateObj.getTime());
+            return {
+              ...appt,
+              formatted_date: isValid
+                ? dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : 'Fecha no disponible'
+            };
+          })
         : [];
 
       setAppointments(formattedAppointments);
@@ -62,160 +68,168 @@ const Appointments = () => {
   }, []); // Array vacío = Ejecutar SOLO al montar el componente (Evita bucles)
 
   // --- ACCIONES ---
-
   const handleDeleteAppointment = async (id) => {
     if (!window.confirm('¿Cancelar esta cita?')) return;
     try {
       await deleteAppointment(id);
-      toast.info('Cita cancelada');
-      loadData(); // Reutilizamos la función
-    } catch (error) {
-      console.error(error);
-      toast.error('No se pudo cancelar la cita');
-    }
-  };
-
-  const deleteRating = async (reviewId) => {
-    if (!window.confirm('¿Eliminar esta calificación?')) return;
-    try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`${API_URL}/ratings/${reviewId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success('Calificación eliminada');
+      toast.success('Cita cancelada');
       loadData();
     } catch (error) {
       console.error(error);
-      toast.error('Error al eliminar calificación');
+      toast.error('Error al cancelar cita');
     }
   };
 
-  // --- MODALES ---
+  const handleNewAppointment = () => {
+    loadData();
+  };
 
-  const openRatingModal = (appt) => {
-    setSelectedVeterinarianForRating({ id: appt.vet_id, name: appt.vet_name });
-    setSelectedAppointmentId(appt.id);
+  const handleOpenRatingModal = (vetId, appointmentId) => {
+    setSelectedVeterinarianForRating(vetId);
+    setSelectedAppointmentId(appointmentId);
     setIsRatingModalOpen(true);
   };
 
-  // ✅ NUEVO: color del badge según status
-  const statusBadge = (status) => {
-    const map = {
-      scheduled:  'bg-blue-100 text-blue-700',
-      completed:  'bg-green-100 text-green-700',
-      cancelled:  'bg-red-100 text-red-600',
-      Completada: 'bg-green-100 text-green-700',
-      Cancelada:  'bg-red-100 text-red-600',
-    };
-    return map[status] || 'bg-gray-100 text-gray-600';
+  const handleRatingSubmit = async ({ rating, comment }) => {
+    try {
+      await axios.post(
+        `${API_URL}/api/ratings`,
+        {
+          veterinarian_id: selectedVeterinarianForRating,
+          appointment_id: selectedAppointmentId,
+          rating,
+          comment
+        },
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        }
+      );
+      toast.success('¡Calificación enviada!');
+      setIsRatingModalOpen(false);
+      loadData();
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al enviar calificación');
+    }
   };
 
+  // --- RENDER ---
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar user={user} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+      <Sidebar user={user} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} onNewPet={null} />
 
       <div className="flex-1 lg:ml-72">
-        <MobileHeader onMenuClick={() => setSidebarOpen(true)} />
+        <MobileHeader onMenuClick={() => setSidebarOpen(true)} onNewPet={null} />
 
         <main className="px-4 lg:px-8 py-8 max-w-5xl mx-auto">
 
-          {/* FORMULARIO INTELIGENTE */}
-          <AppointmentForm onSuccess={loadData} />
+          {/* HEADER */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-black text-gray-900">Mis Citas</h1>
+              <p className="text-gray-500 mt-1">Gestiona tus citas veterinarias</p>
+            </div>
+            {/* ✅ CAMBIO: Botón de refrescar */}
+            <button
+              onClick={loadData}
+              className="inline-flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-2 rounded-xl border border-blue-200 font-medium text-sm transition-all"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Actualizar
+            </button>
+          </div>
 
-          {/* LISTADO DE CITAS */}
+          {/* FORMULARIO NUEVA CITA */}
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6 mb-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <Stethoscope className="w-5 h-5 text-blue-600" /> Agendar Nueva Cita
+            </h2>
+            <AppointmentForm onAppointmentCreated={handleNewAppointment} />
+          </div>
+
+          {/* LISTA DE CITAS */}
           <div className="space-y-4">
-            <h1 className="text-2xl font-bold flex items-center gap-2 text-gray-800">
-              <Calendar className="w-6 h-6 text-blue-600" />
-              Historial de Citas
-            </h1>
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <ClipboardList className="w-5 h-5 text-blue-600" />
+              Citas Agendadas ({appointments.length})
+            </h2>
 
             {appointments.length === 0 ? (
-              <div className="text-center py-10 bg-white rounded-xl border border-dashed text-gray-500">
-                No tienes citas registradas aún.
+              <div className="text-center py-16 bg-white rounded-3xl border-2 border-dashed border-gray-200">
+                <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-gray-900">Sin citas agendadas</h3>
+                <p className="text-gray-500">Agenda tu primera cita veterinaria arriba.</p>
               </div>
             ) : (
-              appointments.map(appt => (
-                <div key={appt.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 transition-shadow hover:shadow-md">
+              appointments.map((appt) => (
+                <div key={appt.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 
-                  {/* Header Cita */}
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-3">
-                      {/* ✅ NUEVO: foto de la mascota si existe */}
-                      {appt.pet_image && (
-                        <img src={appt.pet_image} alt={appt.pet_name}
-                          className="w-12 h-12 rounded-full object-cover border-2 border-blue-100 shrink-0" />
-                      )}
-                      <div>
-                        <h3 className="font-bold text-lg text-gray-900">{appt.pet_name}</h3>
-                        {/* ✅ CAMBIO: badge con color según status */}
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusBadge(appt.status)}`}>
-                          {appt.status || 'Pendiente'}
+                    {/* INFO PRINCIPAL */}
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-3 py-1 rounded-full text-xs font-black uppercase ${
+                          appt.status === 'completed'  ? 'bg-green-100 text-green-700'  :
+                          appt.status === 'cancelled'  ? 'bg-red-100 text-red-700'      :
+                          'bg-blue-100 text-blue-700'
+                        }`}>
+                          {appt.status === 'completed' ? 'Completada' :
+                           appt.status === 'cancelled'  ? 'Cancelada'  : 'Agendada'}
                         </span>
+                        <span className="text-sm text-gray-500">{appt.formatted_date}</span>
                       </div>
-                    </div>
 
-                    {/* Botón Cancelar */}
-                    {appt.status !== 'Completada' && appt.status !== 'Cancelada' &&
-                     appt.status !== 'completed'  && appt.status !== 'cancelled'  && (
-                      <button onClick={() => handleDeleteAppointment(appt.id)} className="text-gray-400 hover:text-red-500 transition-colors p-1">
-                        <X size={20} />
-                      </button>
-                    )}
-                  </div>
+                      <p className="font-bold text-gray-900 text-lg">{appt.pet_name}</p>
 
-                  {/* Detalles */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 text-sm text-gray-600 mb-4">
-                    <div className="flex items-center gap-2">
-                      <Stethoscope size={16} className="text-blue-500"/>
-                      <span>Dr. {appt.vet_name}</span>
-                      <StarRating value={appt.average_rating} />
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <MapPin size={16} className="text-red-500 shrink-0 mt-0.5"/>
-                      <div>
-                        <span>{appt.clinic_name || 'Atención a Domicilio / Independiente'}</span>
-                        {/* ✅ NUEVO: dirección de la clínica */}
-                        {appt.clinic_address && (
-                          <p className="text-xs text-gray-400">{appt.clinic_address}</p>
+                      <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <Stethoscope className="w-4 h-4" />
+                        <span>{appt.vet_name}</span>
+                        {appt.average_rating && (
+                          <span className="flex items-center gap-1 ml-2 text-yellow-500">
+                            <Star className="w-3 h-3 fill-current" />
+                            {parseFloat(appt.average_rating).toFixed(1)}
+                          </span>
                         )}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 md:col-span-2">
-                      <Calendar size={16} className="text-green-500"/>
-                      <span className="font-semibold">{appt.formatted_date}</span>
-                    </div>
-                    {/* ✅ NUEVO: motivo de la cita */}
-                    {appt.reason && (
-                      <div className="flex items-start gap-2 md:col-span-2 bg-gray-50 rounded-xl px-3 py-2">
-                        <ClipboardList size={15} className="text-gray-400 shrink-0 mt-0.5"/>
-                        <span className="text-xs text-gray-600 italic">{appt.reason}</span>
+
+                      <div className="flex items-center gap-1 text-sm text-gray-500">
+                        <MapPin className="w-4 h-4" />
+                        <span>{appt.clinic_name}</span>
                       </div>
-                    )}
-                  </div>
 
-                  {/* Acciones de Reseña */}
-                  <div className="pt-3 border-t border-gray-50 flex gap-2">
-                    {appt.status === 'Completada' && !appt.has_review && (
-                      <button 
-                        onClick={() => openRatingModal(appt)}
-                        className="flex items-center gap-2 bg-yellow-50 text-yellow-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-yellow-100 transition-colors"
-                      >
-                        <Star size={14} className="fill-yellow-600"/> Calificar Atención
-                      </button>
-                    )}
+                      {appt.reason && (
+                        <p className="text-sm text-gray-500 italic">"{appt.reason}"</p>
+                      )}
+                    </div>
 
-                    {appt.has_review && (
-                      <>
-                        <button onClick={() => openRatingModal(appt)} className="flex items-center gap-1 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-100">
-                          <Pencil size={12} /> Editar Reseña
+                    {/* ACCIONES */}
+                    <div className="flex flex-col gap-2 min-w-[140px]">
+                      {appt.status === 'completed' && appt.vet_id && !appt.has_review && (
+                        <button
+                          onClick={() => handleOpenRatingModal(appt.vet_id, appt.id)}
+                          className="flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-4 rounded-xl text-sm font-medium transition-all"
+                        >
+                          <Star className="w-4 h-4" /> Calificar
                         </button>
-                        <button onClick={() => deleteRating(appt.review_id)} className="flex items-center gap-1 bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100">
-                          <Trash2 size={12} /> Borrar
-                        </button>
-                      </>
-                    )}
-                  </div>
+                      )}
 
+                      {appt.has_review && (
+                        <div className="flex items-center justify-center gap-1 text-yellow-500 text-sm font-medium">
+                          <Star className="w-4 h-4 fill-current" /> Calificado
+                        </div>
+                      )}
+
+                      {appt.status === 'scheduled' && (
+                        <button
+                          onClick={() => handleDeleteAppointment(appt.id)}
+                          className="flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 py-2 px-4 rounded-xl text-sm font-medium border border-red-200 transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" /> Cancelar
+                        </button>
+                      )}
+                    </div>
+
+                  </div>
                 </div>
               ))
             )}
@@ -223,13 +237,15 @@ const Appointments = () => {
         </main>
       </div>
 
-      <RatingModal
-        isOpen={isRatingModalOpen}
-        veterinarian={selectedVeterinarianForRating}
-        appointmentId={selectedAppointmentId}
-        onClose={() => setIsRatingModalOpen(false)}
-        onSuccess={loadData}
-      />
+      {/* MODAL DE CALIFICACIÓN */}
+      {isRatingModalOpen && (
+        <RatingModal
+          isOpen={isRatingModalOpen}
+          onClose={() => setIsRatingModalOpen(false)}
+          onSubmit={handleRatingSubmit}
+          veterinarianId={selectedVeterinarianForRating}
+        />
+      )}
     </div>
   );
 };

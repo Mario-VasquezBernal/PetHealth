@@ -478,7 +478,6 @@ export const generateQRCode = async (petId, { vetId, clinicId }) => {
 
 
 export const validateQRToken = async (token) => {
-  // Ruta original en /qr/validate/:token — NO mover a /api/public
   const response = await fetch(`${API_URL}/qr/validate/${token}`, {
     headers: { 'Content-Type': 'application/json' },
   });
@@ -489,46 +488,61 @@ export const validateQRToken = async (token) => {
   }
 
   return response.json();
+  // ℹ️ Si el servidor no devuelve assignedVet/assignedClinic,
+  // VetQRAccess los leerá desde los query params del QR (searchParams) — ya cubierto
 };
 
 
 export const createMedicalRecord = async (recordData) => {
-  // ✅ CAMBIO: Campos renombrados para coincidir con public.routes.js
-  // measured_weight → recorded_weight | follow_up_date → next_visit
+  // ✅ CAMBIO: Ya NO desestructuramos con nombres viejos.
+  // Tomamos TODO el objeto tal cual llega desde VetQRAccess
+  // (que ya usa recorded_weight, next_visit, temperature, heart_rate, etc.)
   const {
     token,
+    clinic_id,
+    clinic_name,           // ✅ CAMBIO: antes no se enviaba
+    veterinarian_name,     // ✅ CAMBIO: antes no se enviaba
     diagnosis,
     treatment,
+    recorded_weight,       // ✅ CAMBIO: antes se leía como 'measured_weight' → llegaba undefined
+    next_visit,            // ✅ CAMBIO: antes se leía como 'follow_up_date' → llegaba undefined
+    visit_type,
+    temperature,           // ✅ CAMBIO: antes no se enviaba
+    heart_rate,            // ✅ CAMBIO: antes no se enviaba
     notes,
-    measured_weight,   // viene de VetQRAccess
-    vet_id: _vet_id,
-    clinic_id,
     visit_reason,
     examination_findings,
-    follow_up_date,    // viene de VetQRAccess
-    visit_type
   } = recordData;
+
+  // Construir el campo notes combinando hallazgos y motivo
+  const fullNotes = [
+    notes              || '',
+    visit_reason       ? `Motivo: ${visit_reason}` : '',
+    examination_findings ? `Hallazgos: ${examination_findings}` : '',
+  ].filter(Boolean).join('\n') || null;
 
   const response = await fetch(`${API_URL}/api/public/medical-records`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      token,                              // para que el servidor resuelva pet_id
+      token,
+      clinic_id,
+      clinic_name,        // ✅ CAMBIO: el backend usa esto para guardar en medical_records
+      veterinarian_name,  // ✅ CAMBIO: el backend usa esto para guardar en medical_records
       diagnosis,
       treatment,
-      notes: notes
-        ? `${notes}${visit_reason ? `\nMotivo: ${visit_reason}` : ''}${examination_findings ? `\nHallazgos: ${examination_findings}` : ''}`
-        : `${visit_reason ? `Motivo: ${visit_reason}` : ''}${examination_findings ? `\nHallazgos: ${examination_findings}` : ''}`,
-      recorded_weight: measured_weight,  // ✅ nombre correcto para el servidor
-      next_visit: follow_up_date,        // ✅ nombre correcto para el servidor
+      recorded_weight,    // ✅ CAMBIO: nombre correcto — antes llegaba undefined
+      next_visit,         // ✅ CAMBIO: nombre correcto — antes llegaba undefined
       visit_type,
-      clinic_id,
+      temperature,        // ✅ CAMBIO: para mostrar signos vitales en historial
+      heart_rate,         // ✅ CAMBIO: para mostrar signos vitales en historial
+      notes: fullNotes,
     }),
   });
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || 'Error al crear registro médico');
+    throw new Error(error.message || error.error || 'Error al crear registro médico');
   }
 
   return response.json();
@@ -537,10 +551,10 @@ export const createMedicalRecord = async (recordData) => {
 
 export const getMedicalRecords = async (petId) => {
   const token = localStorage.getItem('token');
-  const response = await fetch(`${API_URL}/medical-records/pet/${petId}?t=${Date.now()}`, { // ✅ CAMBIO: fuerza sin caché para que el peso nuevo siempre se refleje
+  const response = await fetch(`${API_URL}/medical-records/pet/${petId}?t=${Date.now()}`, {
     headers: {
       Authorization: `Bearer ${token}`,
-      'Cache-Control': 'no-cache', // ✅ CAMBIO: evita que Railway devuelva el historial cacheado
+      'Cache-Control': 'no-cache',
       'Content-Type': 'application/json',
     },
   });
@@ -552,3 +566,4 @@ export const getMedicalRecords = async (petId) => {
 
   return response.json();
 };
+

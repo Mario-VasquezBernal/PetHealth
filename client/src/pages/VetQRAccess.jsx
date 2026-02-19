@@ -1,41 +1,37 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom'; // ✅ CAMBIO: agregar useSearchParams
 import { validateQRToken, createMedicalRecord } from '../dataManager';
 import { toast } from 'react-toastify';
 import { 
-  Stethoscope, 
-  Weight, 
-  User,
-  Building2,
-  Clock,
-  AlertCircle,
-  CheckCircle,
-  Loader
+  Stethoscope, Weight, User, Building2, Clock,
+  AlertCircle, CheckCircle, Loader, Thermometer, Heart
 } from 'lucide-react';
 
 const VetQRAccess = () => {
-  const { token } = useParams();
-  
-  const [loading, setLoading] = useState(true);
+  const { token }              = useParams();
+  const [searchParams]         = useSearchParams(); // ✅ CAMBIO: leer parámetros del QR
+
+  const [loading, setLoading]       = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [petData, setPetData] = useState(null);
+  const [petData, setPetData]       = useState(null);
   const [tokenValid, setTokenValid] = useState(false);
   
-  // ✅ CAMBIO: En lugar de listas, guardamos los datos asignados
-  const [assignedVet, setAssignedVet] = useState(null);
+  const [assignedVet, setAssignedVet]       = useState(null);
   const [assignedClinic, setAssignedClinic] = useState(null);
-  
+
   const [formData, setFormData] = useState({
-    diagnosis: '',
-    treatment: '',
-    notes: '',
-    measured_weight: '',
-    vet_id: '',
-    clinic_id: '',
-    visit_reason: '',
+    diagnosis:            '',
+    treatment:            '',
+    notes:                '',
+    recorded_weight:      '',   // ✅ CAMBIO: era 'measured_weight' → ahora coincide con el backend
+    vet_id:               '',
+    clinic_id:            '',
+    visit_reason:         '',
     examination_findings: '',
-    follow_up_date: '',
-    visit_type: 'rutina'
+    next_visit:           '',   // ✅ CAMBIO: era 'follow_up_date' → ahora coincide con el backend
+    visit_type:           'Consulta General', // ✅ CAMBIO: valor en español para que coincida con el badge
+    temperature:          '',   // ✅ CAMBIO: campo nuevo (signos vitales)
+    heart_rate:           '',   // ✅ CAMBIO: campo nuevo (signos vitales)
   });
 
   useEffect(() => {
@@ -47,20 +43,30 @@ const VetQRAccess = () => {
       const data = await validateQRToken(token);
       setPetData(data.pet);
       setTokenValid(true);
-      
-      // ✅ CAMBIO: Recibir datos asignados en lugar de listas
-      setAssignedVet(data.assignedVet);
-      setAssignedClinic(data.assignedClinic);
-      
-      // ✅ Pre-llenar el formulario con los IDs asignados
+
+      // ✅ CAMBIO: Si validateQRToken devuelve assignedVet/assignedClinic úsalos,
+      // si no, construirlos desde los query params del QR (vet_id, vet_name, clinic_id, clinic_name)
+      const vet = data.assignedVet || {
+        id:   searchParams.get('vet_id'),
+        name: searchParams.get('vet_name'),
+      };
+
+      const clinic = data.assignedClinic || {
+        id:   searchParams.get('clinic_id'),
+        name: searchParams.get('clinic_name'),
+      };
+
+      setAssignedVet(vet);
+      setAssignedClinic(clinic);
+
       setFormData(prev => ({
         ...prev,
-        vet_id: data.assignedVet?.id || '',
-        clinic_id: data.assignedClinic?.id || ''
+        vet_id:    vet?.id    || '',
+        clinic_id: clinic?.id || '',
       }));
-      
-      console.log('✅ Veterinario asignado:', data.assignedVet);
-      console.log('✅ Clínica asignada:', data.assignedClinic);
+
+      console.log('✅ Veterinario asignado:', vet);
+      console.log('✅ Clínica asignada:', clinic);
       toast.success('Código QR válido');
     } catch (error) {
       setTokenValid(false);
@@ -72,35 +78,54 @@ const VetQRAccess = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (!formData.diagnosis || !formData.treatment) {
       return toast.warning('Completa diagnóstico y tratamiento');
     }
 
     try {
       setSubmitting(true);
-      
+
+      // ✅ CAMBIO: payload alineado con lo que espera public.routes.js
       await createMedicalRecord({
-        token,
-        ...formData,
-        measured_weight: formData.measured_weight ? parseFloat(formData.measured_weight) : null
+        token,                                    // para resolver pet_id en el backend
+        clinic_id:       formData.clinic_id,
+        clinic_name:     assignedClinic?.name || '',
+        veterinarian_name: assignedVet?.name  || '',
+        diagnosis:       formData.diagnosis,
+        treatment:       formData.treatment,
+        notes:           formData.notes,
+        recorded_weight: formData.recorded_weight // ✅ CAMBIO: nombre correcto para el backend
+          ? parseFloat(formData.recorded_weight)
+          : null,
+        next_visit:      formData.next_visit || null, // ✅ CAMBIO: nombre correcto para el backend
+        visit_type:      formData.visit_type,
+        temperature:     formData.temperature     // ✅ CAMBIO: signos vitales
+          ? parseFloat(formData.temperature)
+          : null,
+        heart_rate:      formData.heart_rate      // ✅ CAMBIO: signos vitales
+          ? parseInt(formData.heart_rate)
+          : null,
+        examination_findings: formData.examination_findings,
       });
-      
+
       toast.success('✅ Registro médico guardado exitosamente');
-      
+
+      // Reset
       setFormData({
-        diagnosis: '',
-        treatment: '',
-        notes: '',
-        measured_weight: '',
-        vet_id: assignedVet?.id || '',
-        clinic_id: assignedClinic?.id || '',
-        visit_reason: '',
+        diagnosis:            '',
+        treatment:            '',
+        notes:                '',
+        recorded_weight:      '',
+        vet_id:               assignedVet?.id    || '',
+        clinic_id:            assignedClinic?.id || '',
+        visit_reason:         '',
         examination_findings: '',
-        follow_up_date: '',
-        visit_type: 'rutina'
+        next_visit:           '',
+        visit_type:           'Consulta General',
+        temperature:          '',
+        heart_rate:           '',
       });
-      
+
     } catch (error) {
       toast.error(error.message || 'Error al guardar registro');
     } finally {
@@ -136,7 +161,8 @@ const VetQRAccess = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        
+
+        {/* HEADER */}
         <div className="bg-white rounded-2xl shadow-xl p-6 mb-6 border-t-4 border-blue-600">
           <div className="flex items-center gap-4 mb-4">
             <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-2xl flex items-center justify-center">
@@ -149,6 +175,7 @@ const VetQRAccess = () => {
           </div>
         </div>
 
+        {/* INFO MASCOTA */}
         <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
@@ -163,56 +190,46 @@ const VetQRAccess = () => {
               <p className="text-gray-600 text-sm">{petData.owner_email}</p>
             </div>
           </div>
-          
           {petData.allergies && petData.allergies !== 'no' && (
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-              <p className="text-xs font-bold text-orange-700 flex items-center gap-1">
-                ⚠️ ALERGIAS/NOTAS
-              </p>
+              <p className="text-xs font-bold text-orange-700 flex items-center gap-1">⚠️ ALERGIAS/NOTAS</p>
               <p className="text-orange-900 font-medium">{petData.allergies}</p>
             </div>
           )}
         </div>
 
+        {/* FORMULARIO */}
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Registro de Consulta</h2>
 
           <div className="space-y-6">
-            
-            {/* ✅ CAMBIO: Mostrar info asignada (read-only) en lugar de selects */}
+
+            {/* INFO ASIGNADA (read-only) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-green-50 rounded-xl border-2 border-green-200">
               <div>
                 <label className="block text-sm font-semibold text-green-800 mb-2 flex items-center gap-2">
-                  <User className="w-4 h-4 text-green-600" />
-                  Doctor Asignado
+                  <User className="w-4 h-4 text-green-600" /> Doctor Asignado
                 </label>
                 <div className="bg-white border-2 border-green-300 p-3 rounded-xl">
                   <p className="font-bold text-gray-900">{assignedVet?.name || 'No asignado'}</p>
-                  {assignedVet?.specialty && (
-                    <p className="text-sm text-gray-600">{assignedVet.specialty}</p>
-                  )}
+                  {assignedVet?.specialty && <p className="text-sm text-gray-600">{assignedVet.specialty}</p>}
                 </div>
               </div>
-
               <div>
                 <label className="block text-sm font-semibold text-green-800 mb-2 flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-green-600" />
-                  Clínica Asignada
+                  <Building2 className="w-4 h-4 text-green-600" /> Clínica Asignada
                 </label>
                 <div className="bg-white border-2 border-green-300 p-3 rounded-xl">
                   <p className="font-bold text-gray-900">{assignedClinic?.name || 'No asignada'}</p>
-                  {assignedClinic?.address && (
-                    <p className="text-sm text-gray-600">{assignedClinic.address}</p>
-                  )}
+                  {assignedClinic?.address && <p className="text-sm text-gray-600">{assignedClinic.address}</p>}
                 </div>
               </div>
             </div>
 
+            {/* MOTIVO Y TIPO */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Motivo de la Consulta
-                </label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Motivo de la Consulta</label>
                 <input
                   type="text"
                   placeholder="Ej: Chequeo anual, Vacunación, Emergencia..."
@@ -221,126 +238,125 @@ const VetQRAccess = () => {
                   className="w-full border-2 border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 />
               </div>
-
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Tipo de Visita
-                </label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo de Visita</label>
+                {/* ✅ CAMBIO: valores en español para que coincidan con el badge del historial */}
                 <select
                   value={formData.visit_type}
                   onChange={(e) => setFormData({...formData, visit_type: e.target.value})}
                   className="w-full border-2 border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 >
-                  <option value="rutina">Rutina</option>
-                  <option value="emergencia">Emergencia</option>
-                  <option value="seguimiento">Seguimiento</option>
-                  <option value="cirugia">Cirugía</option>
+                  <option value="Consulta General">Consulta General</option>
+                  <option value="Emergencia">Emergencia</option>
+                  <option value="Seguimiento">Seguimiento</option>
+                  <option value="Cirugía">Cirugía</option>
+                  <option value="Rutina">Rutina</option>
                 </select>
               </div>
             </div>
 
+            {/* DIAGNÓSTICO */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Diagnóstico *
-              </label>
-              <textarea
-                required
-                rows="3"
-                placeholder="Ingresa el diagnóstico de la consulta"
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Diagnóstico *</label>
+              <textarea required rows="3" placeholder="Ingresa el diagnóstico de la consulta"
                 value={formData.diagnosis}
                 onChange={(e) => setFormData({...formData, diagnosis: e.target.value})}
                 className="w-full border-2 border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
               />
             </div>
 
+            {/* TRATAMIENTO */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Tratamiento *
-              </label>
-              <textarea
-                required
-                rows="3"
-                placeholder="Medicamentos, procedimientos, etc."
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Tratamiento *</label>
+              <textarea required rows="3" placeholder="Medicamentos, procedimientos, etc."
                 value={formData.treatment}
                 onChange={(e) => setFormData({...formData, treatment: e.target.value})}
                 className="w-full border-2 border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
               />
             </div>
 
+            {/* HALLAZGOS */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Hallazgos del Examen Físico
-              </label>
-              <textarea
-                rows="2"
-                placeholder="Temperatura, frecuencia cardíaca, condición física general..."
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Hallazgos del Examen Físico</label>
+              <textarea rows="2" placeholder="Temperatura, frecuencia cardíaca, condición física general..."
                 value={formData.examination_findings}
                 onChange={(e) => setFormData({...formData, examination_findings: e.target.value})}
                 className="w-full border-2 border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
               />
             </div>
 
+            {/* ✅ CAMBIO: Signos vitales como campos individuales */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                  <Weight className="w-4 h-4" />
-                  Peso medido (kg)
+                  <Thermometer className="w-4 h-4 text-orange-500" /> Temperatura (°C)
                 </label>
                 <input
-                  type="number"
-                  step="0.1"
-                  placeholder="Ej: 15.5"
-                  value={formData.measured_weight}
-                  onChange={(e) => setFormData({...formData, measured_weight: e.target.value})}
-                  className="w-full border-2 border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  type="number" step="0.1" placeholder="Ej: 38.5"
+                  value={formData.temperature}
+                  onChange={(e) => setFormData({...formData, temperature: e.target.value})}
+                  className="w-full border-2 border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-orange-400 focus:border-orange-400 outline-none"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Este peso actualizará automáticamente el peso registrado de la mascota
-                </p>
               </div>
-
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  Próxima Revisión
+                  <Heart className="w-4 h-4 text-red-500" /> Frecuencia Cardíaca (bpm)
+                </label>
+                <input
+                  type="number" placeholder="Ej: 90"
+                  value={formData.heart_rate}
+                  onChange={(e) => setFormData({...formData, heart_rate: e.target.value})}
+                  className="w-full border-2 border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-red-400 focus:border-red-400 outline-none"
+                />
+              </div>
+            </div>
+
+            {/* PESO Y PRÓXIMA REVISIÓN */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <Weight className="w-4 h-4" /> Peso medido (kg)
+                </label>
+                <input
+                  type="number" step="0.1" placeholder="Ej: 15.5"
+                  value={formData.recorded_weight}  // ✅ CAMBIO: nombre correcto
+                  onChange={(e) => setFormData({...formData, recorded_weight: e.target.value})}
+                  className="w-full border-2 border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">Este peso actualizará automáticamente el peso de la mascota</p>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <Clock className="w-4 h-4" /> Próxima Revisión
                 </label>
                 <input
                   type="date"
-                  value={formData.follow_up_date}
-                  onChange={(e) => setFormData({...formData, follow_up_date: e.target.value})}
+                  value={formData.next_visit}       // ✅ CAMBIO: nombre correcto
+                  onChange={(e) => setFormData({...formData, next_visit: e.target.value})}
                   className="w-full border-2 border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 />
               </div>
             </div>
 
+            {/* NOTAS */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Notas adicionales
-              </label>
-              <textarea
-                rows="3"
-                placeholder="Observaciones, recomendaciones..."
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Notas adicionales</label>
+              <textarea rows="3" placeholder="Observaciones, recomendaciones..."
                 value={formData.notes}
                 onChange={(e) => setFormData({...formData, notes: e.target.value})}
                 className="w-full border-2 border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
               />
             </div>
 
+            {/* BOTÓN SUBMIT */}
             <button
-              type="submit"
-              disabled={submitting}
+              type="submit" disabled={submitting}
               className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold py-4 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
             >
               {submitting ? (
-                <>
-                  <Loader className="w-5 h-5 animate-spin" />
-                  Guardando...
-                </>
+                <><Loader className="w-5 h-5 animate-spin" /> Guardando...</>
               ) : (
-                <>
-                  <CheckCircle className="w-5 h-5" />
-                  Guardar Registro Médico
-                </>
+                <><CheckCircle className="w-5 h-5" /> Guardar Registro Médico</>
               )}
             </button>
           </div>
