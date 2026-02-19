@@ -44,7 +44,7 @@ function App() {
         
         {/* BLOQUE 1: RUTAS EXTERNAS (QR) */}
         <Route path="/medical-history/:id" element={<PublicMedicalHistory />} />
-        <Route path="/vet-access/:id" element={<VetAccessPanel />} />
+        <Route path="/qr/:token" element={<VetAccessPanel />} />
 
         {/* BLOQUE 2: AUTENTICACIÓN */}
         <Route path="/login" element={<Login />} />
