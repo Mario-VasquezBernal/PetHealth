@@ -14,37 +14,39 @@ import {
   AlertTriangle
 } from 'lucide-react';
 
+
 const VetAccessPanel = () => {
 
   const { id } = useParams();
   const [searchParams] = useSearchParams();
 
-  const clinicName = searchParams.get('clinic') || 'Consulta General';
-  const clinicId = searchParams.get('clinic_id');
-  const vetName = searchParams.get('vet') || 'Veterinario';
-  const timestamp = searchParams.get('ts');
+  const clinicName    = searchParams.get('clinic')         || 'Consulta General';
+  const clinicId      = searchParams.get('clinic_id');
+  const vetName       = searchParams.get('vet')            || 'Veterinario';
+  const timestamp     = searchParams.get('ts');
   const appointmentId = searchParams.get('appointment_id');
 
-  const [pet, setPet] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [pet, setPet]               = useState(null);
+  const [loading, setLoading]       = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [expired, setExpired] = useState(false);
+  const [success, setSuccess]       = useState(false);
+  const [expired, setExpired]       = useState(false);
   const [requiresReview, setRequiresReview] = useState(false);
 
   const [formData, setFormData] = useState({
-    visit_type: 'Consulta General',
-    diagnosis: '',
-    treatment: '',
-    weight: '',
+    visit_type:  'Consulta General',
+    diagnosis:   '',
+    treatment:   '',
+    weight:      '',
     temperature: '',
-    heart_rate: '',
-    notes: '',
-    next_visit: ''
+    heart_rate:  '',
+    notes:       '',
+    next_visit:  ''
   });
 
   const API_URL = import.meta.env.VITE_API_URL;
-  const token = localStorage.getItem("token");
+  const token   = localStorage.getItem("token");
+
 
   // ===============================
   // VALIDAR QR + CARGAR MASCOTA
@@ -62,8 +64,8 @@ const VetAccessPanel = () => {
 
     const fetchPet = async () => {
       try {
-
-        const res = await fetch(`${API_URL}/public/pets/${id}`);
+        // ✅ CAMBIO: /public/pets → /api/public/pets
+        const res = await fetch(`${API_URL}/api/public/pets/${id}`);
 
         if (!res.ok) throw new Error();
 
@@ -82,6 +84,7 @@ const VetAccessPanel = () => {
 
   }, [id, API_URL, timestamp]);
 
+
   // ===============================
   // SUBMIT
   // ===============================
@@ -89,28 +92,27 @@ const VetAccessPanel = () => {
 
     e.preventDefault();
 
-    if (!token) {
-      toast.error("Sesión expirada. Inicie sesión nuevamente.");
-      return;
-    }
-
     setSubmitting(true);
 
     try {
 
+      // ✅ CAMBIO: next_visit se limpia si no requiere revisión
+      // El servidor crea la cita automáticamente cuando next_visit tiene valor
       const payload = {
-        pet_id: id,
-        clinic_name: clinicName,
-        clinic_id: clinicId,
+        pet_id:            id,
+        clinic_name:       clinicName,
+        clinic_id:         clinicId,
         veterinarian_name: vetName,
-        ...formData
+        ...formData,
+        next_visit: requiresReview ? formData.next_visit : ''
       };
 
       // GUARDAR HISTORIAL
-      const response = await fetch(`${API_URL}/public/medical-records`, {
-        method: 'POST',
+      // ✅ CAMBIO: /public/medical-records → /api/public/medical-records
+      const response = await fetch(`${API_URL}/api/public/medical-records`, {
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body:    JSON.stringify(payload)
       });
 
       if (!response.ok) throw new Error();
@@ -118,16 +120,16 @@ const VetAccessPanel = () => {
       // ===========================
       // FINALIZAR CITA EXISTENTE
       // ===========================
-      if (appointmentId) {
+      if (appointmentId && token) {
 
         await fetch(`${API_URL}/appointments/finish/${appointmentId}`, {
-          method: 'PUT',
+          method:  'PUT',
           headers: {
             'Content-Type': 'application/json',
             token
           },
           body: JSON.stringify({
-            requires_review: requiresReview,
+            requires_review:  requiresReview,
             next_review_date: requiresReview ? formData.next_visit : null
           })
         });
@@ -136,33 +138,16 @@ const VetAccessPanel = () => {
 
       // ===========================
       // CREAR CITA SI NO EXISTE
+      // ✅ CAMBIO: Eliminado — el servidor lo hace automáticamente
+      // en POST /api/public/medical-records cuando next_visit tiene valor
       // ===========================
-      if (!appointmentId && requiresReview && formData.next_visit) {
-
-        await fetch(`${API_URL}/appointments`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            token
-          },
-          body: JSON.stringify({
-            pet_id: id,
-            veterinarian_id: clinicId || null,
-            date: formData.next_visit,
-            reason: formData.diagnosis || "Revisión médica"
-          })
-        });
-
-      }
 
       setSuccess(true);
       toast.success("Consulta registrada correctamente");
 
     } catch (err) {
-
       console.error(err);
       toast.error("Error al guardar");
-
     } finally {
       setSubmitting(false);
     }
@@ -170,6 +155,7 @@ const VetAccessPanel = () => {
 
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
+
 
   // ===============================
   // UI STATES
@@ -189,6 +175,7 @@ const VetAccessPanel = () => {
         <p className="text-gray-500">Se registró correctamente</p>
       </div>
     );
+
 
   // ===============================
   // FORM
@@ -237,10 +224,11 @@ const VetAccessPanel = () => {
 
           <div className="mb-6 flex items-center gap-3">
 
+            {/* ✅ CAMBIO: SVG inline reemplaza via.placeholder.com (ERR_NAME_NOT_RESOLVED) */}
             <img
-              src={pet?.photo_url || 'https://via.placeholder.com/100'}
+              src={pet?.photo_url || `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23e5e7eb'/%3E%3Ctext x='50' y='60' text-anchor='middle' font-size='40'%3E%F0%9F%90%BE%3C/text%3E%3C/svg%3E`}
               alt="Mascota"
-              className="w-16 h-16 rounded-full"
+              className="w-16 h-16 rounded-full object-cover"
             />
 
             <div>
@@ -253,53 +241,21 @@ const VetAccessPanel = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
 
             <input
-              type="text"
-              name="diagnosis"
-              placeholder="Diagnóstico"
-              required
-              value={formData.diagnosis}
-              onChange={handleChange}
+              type="text" name="diagnosis" placeholder="Diagnóstico" required
+              value={formData.diagnosis} onChange={handleChange}
               className="w-full p-3 border rounded-xl"
             />
 
             <textarea
-              name="treatment"
-              placeholder="Tratamiento"
-              required
-              value={formData.treatment}
-              onChange={handleChange}
+              name="treatment" placeholder="Tratamiento" required
+              value={formData.treatment} onChange={handleChange}
               className="w-full p-3 border rounded-xl"
             />
 
             <div className="grid grid-cols-3 gap-4">
-
-              <input
-                type="number"
-                name="weight"
-                placeholder="Peso"
-                value={formData.weight}
-                onChange={handleChange}
-                className="p-3 border rounded-xl"
-              />
-
-              <input
-                type="number"
-                name="temperature"
-                placeholder="Temp"
-                value={formData.temperature}
-                onChange={handleChange}
-                className="p-3 border rounded-xl"
-              />
-
-              <input
-                type="number"
-                name="heart_rate"
-                placeholder="Pulso"
-                value={formData.heart_rate}
-                onChange={handleChange}
-                className="p-3 border rounded-xl"
-              />
-
+              <input type="number" name="weight"      placeholder="Peso"  value={formData.weight}      onChange={handleChange} className="p-3 border rounded-xl" />
+              <input type="number" name="temperature" placeholder="Temp"  value={formData.temperature} onChange={handleChange} className="p-3 border rounded-xl" />
+              <input type="number" name="heart_rate"  placeholder="Pulso" value={formData.heart_rate}  onChange={handleChange} className="p-3 border rounded-xl" />
             </div>
 
             <div className="bg-yellow-50 p-4 rounded-xl">
@@ -317,11 +273,8 @@ const VetAccessPanel = () => {
 
               {requiresReview && (
                 <input
-                  type="datetime-local"
-                  name="next_visit"
-                  value={formData.next_visit}
-                  onChange={handleChange}
-                  required
+                  type="datetime-local" name="next_visit"
+                  value={formData.next_visit} onChange={handleChange} required
                   className="w-full p-3 border rounded-xl mt-2"
                 />
               )}
@@ -329,8 +282,7 @@ const VetAccessPanel = () => {
             </div>
 
             <button
-              type="submit"
-              disabled={submitting}
+              type="submit" disabled={submitting}
               className="w-full py-4 bg-green-600 text-white rounded-xl font-bold"
             >
               {submitting ? "Guardando..." : "Finalizar y Guardar Consulta"}

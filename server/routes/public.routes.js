@@ -5,6 +5,8 @@ const router = require('express').Router();
 const pool = require('../db');
 const sendEmail = require('../utils/emailService');
 
+
+
 // 1. GET: Lista de Clínicas
 router.get('/clinics', async (req, res) => {
   try {
@@ -17,6 +19,8 @@ router.get('/clinics', async (req, res) => {
     res.status(500).json({ message: 'Error cargando clínicas' });
   }
 });
+
+
 
 // 2. GET: Veterinarios por Clínica
 router.get('/veterinarians/by-clinic/:clinicId', async (req, res) => {
@@ -50,6 +54,8 @@ router.get('/veterinarians/by-clinic/:clinicId', async (req, res) => {
   }
 });
 
+
+
 // 3. GET: Datos de Mascota
 router.get('/pets/:id', async (req, res) => {
   try {
@@ -77,17 +83,19 @@ router.get('/pets/:id', async (req, res) => {
   }
 });
 
+
+
 // 4. POST: Guardar Consulta + crear cita + email
 router.post('/medical-records', async (req, res) => {
 
   console.log("📝 Payload recibido:", req.body);
 
   try {
+    // ✅ CAMBIO: Se recibe 'token' QR para resolver pet_id, clinic_name y veterinarian_name
+    // El frontend (VetQRAccess) ya no envía pet_id directamente
     const {
-      pet_id,
+      token: qrToken,
       clinic_id,
-      clinic_name,
-      veterinarian_name,
       diagnosis,
       treatment,
       recorded_weight,
@@ -97,6 +105,42 @@ router.post('/medical-records', async (req, res) => {
       temperature,
       heart_rate
     } = req.body;
+
+    // ✅ CAMBIO: Resolver pet_id, vet_name y clinic_name desde el token QR
+    let pet_id = req.body.pet_id || null;
+    let clinic_name = req.body.clinic_name || null;
+    let veterinarian_name = req.body.veterinarian_name || null;
+
+    // ✅ CAMBIO: Declarar IDs reales del token para usarlos en el INSERT de la cita
+    let resolved_vet_id = null;
+    let resolved_clinic_id = null;
+
+    if (qrToken && !pet_id) {
+      const tokenResult = await pool.query(
+        // ✅ CAMBIO: Agregar qt.vet_id y qt.clinic_id al SELECT del token
+        `SELECT qt.pet_id, qt.vet_id, qt.clinic_id,
+                v.name AS vet_name, c.name AS clinic_name
+         FROM qr_tokens qt
+         LEFT JOIN veterinarians v ON v.id = qt.vet_id
+         LEFT JOIN clinics c ON c.id = qt.clinic_id
+         WHERE qt.token = $1 AND qt.expires_at > NOW()`,
+        [qrToken]
+      );
+
+      if (tokenResult.rows.length === 0) {
+        return res.status(401).json({ message: 'Token QR inválido o expirado' });
+      }
+
+      pet_id            = tokenResult.rows[0].pet_id;
+      resolved_vet_id    = tokenResult.rows[0].vet_id;    // ✅ CAMBIO: ID real del vet
+      resolved_clinic_id = tokenResult.rows[0].clinic_id; // ✅ CAMBIO: ID real de la clínica
+      veterinarian_name = tokenResult.rows[0].vet_name || veterinarian_name;
+      clinic_name       = tokenResult.rows[0].clinic_name || clinic_name;
+    }
+
+    if (!pet_id) {
+      return res.status(400).json({ message: 'pet_id requerido' });
+    }
 
     let lat = null;
     let lng = null;
@@ -202,7 +246,7 @@ router.post('/medical-records', async (req, res) => {
     const owner = ownerResult.rows[0];
 
     let appointmentDate = null;
-    let appointmentId = null; // ⭐ IMPORTANTE
+    let appointmentId = null;
 
     // =============================
     // CREAR CITA
@@ -211,10 +255,12 @@ router.post('/medical-records', async (req, res) => {
 
       appointmentDate = new Date(validNextVisit);
 
+      // Ignorar canceladas al buscar duplicados
       const existing = await pool.query(
         `SELECT id FROM appointments
          WHERE pet_id = $1
-         AND date::date = $2::date`,
+         AND date::date = $2::date
+         AND status != 'cancelled'`,
         [pet_id, appointmentDate]
       );
 
@@ -225,24 +271,23 @@ router.post('/medical-records', async (req, res) => {
           INSERT INTO appointments
             (user_id, pet_id, vet_id, clinic_id, date, reason, status)
           VALUES
-            ($1, $2, NULL, $3, $4, $5, 'scheduled')
+            ($1, $2, $3, $4, $5, $6, 'scheduled')
           RETURNING id
           `,
           [
             owner.id,
             pet_id,
-            clinic_id === 'independent' ? null : clinic_id,
+            resolved_vet_id || null,                                       // ✅ CAMBIO: vet real del token QR (antes era NULL fijo)
+            resolved_clinic_id || (clinic_id === 'independent' ? null : clinic_id), // ✅ CAMBIO: clinic real del token QR
             appointmentDate,
             'Revisión programada por el veterinario'
           ]
         );
 
         appointmentId = appointmentResult.rows[0].id;
-
         console.log("📅 Cita creada correctamente:", appointmentId);
 
       } else {
-
         appointmentId = existing.rows[0].id;
         console.log("⚠️ Ya existía cita:", appointmentId);
       }
@@ -262,11 +307,13 @@ Se ha registrado una consulta médica para tu mascota ${owner.pet_name}.
       if (appointmentDate) {
         message += `
 
+
 📅 Próxima revisión programada:
 ${appointmentDate.toLocaleString()}
 `;
       } else {
         message += `
+
 
 No se requiere una revisión adicional por el momento.
 `;
@@ -289,7 +336,7 @@ No se requiere una revisión adicional por el momento.
     // =============================
     res.json({
       ...record,
-      appointment_id: appointmentId // ⭐ CLAVE PARA EL QR
+      appointment_id: appointmentId
     });
 
   } catch (error) {

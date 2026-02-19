@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import {
-  Calendar, MapPin, Stethoscope, X, Star, Pencil, Trash2
+  Calendar, MapPin, Stethoscope, X, Star, Pencil, Trash2, ClipboardList
 } from 'lucide-react';
 
 // Componentes
@@ -18,15 +18,16 @@ import StarRating from '../components/StarRating';
 // Data
 import { getAppointments, deleteAppointment, getUserProfile } from '../dataManager';
 
+
 const Appointments = () => {
-  const [user, setUser] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [appointments, setAppointments] = useState([]);
+  const [user, setUser]                   = useState(null);
+  const [sidebarOpen, setSidebarOpen]     = useState(false);
+  const [appointments, setAppointments]   = useState([]);
 
   // Estados para Modal de Calificación
-  const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+  const [isRatingModalOpen, setIsRatingModalOpen]                       = useState(false);
   const [selectedVeterinarianForRating, setSelectedVeterinarianForRating] = useState(null);
-  const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
+  const [selectedAppointmentId, setSelectedAppointmentId]               = useState(null);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -97,6 +98,18 @@ const Appointments = () => {
     setIsRatingModalOpen(true);
   };
 
+  // ✅ NUEVO: color del badge según status
+  const statusBadge = (status) => {
+    const map = {
+      scheduled:  'bg-blue-100 text-blue-700',
+      completed:  'bg-green-100 text-green-700',
+      cancelled:  'bg-red-100 text-red-600',
+      Completada: 'bg-green-100 text-green-700',
+      Cancelada:  'bg-red-100 text-red-600',
+    };
+    return map[status] || 'bg-gray-100 text-gray-600';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar user={user} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
@@ -123,16 +136,27 @@ const Appointments = () => {
             ) : (
               appointments.map(appt => (
                 <div key={appt.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 transition-shadow hover:shadow-md">
-                  
+
                   {/* Header Cita */}
                   <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h3 className="font-bold text-lg text-gray-900">{appt.pet_name}</h3>
-                      <p className="text-sm text-gray-500 font-medium">{appt.status || 'Pendiente'}</p>
+                    <div className="flex items-center gap-3">
+                      {/* ✅ NUEVO: foto de la mascota si existe */}
+                      {appt.pet_image && (
+                        <img src={appt.pet_image} alt={appt.pet_name}
+                          className="w-12 h-12 rounded-full object-cover border-2 border-blue-100 shrink-0" />
+                      )}
+                      <div>
+                        <h3 className="font-bold text-lg text-gray-900">{appt.pet_name}</h3>
+                        {/* ✅ CAMBIO: badge con color según status */}
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusBadge(appt.status)}`}>
+                          {appt.status || 'Pendiente'}
+                        </span>
+                      </div>
                     </div>
-                    
+
                     {/* Botón Cancelar */}
-                    {appt.status !== 'Completada' && appt.status !== 'Cancelada' && (
+                    {appt.status !== 'Completada' && appt.status !== 'Cancelada' &&
+                     appt.status !== 'completed'  && appt.status !== 'cancelled'  && (
                       <button onClick={() => handleDeleteAppointment(appt.id)} className="text-gray-400 hover:text-red-500 transition-colors p-1">
                         <X size={20} />
                       </button>
@@ -146,14 +170,27 @@ const Appointments = () => {
                       <span>Dr. {appt.vet_name}</span>
                       <StarRating value={appt.average_rating} />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <MapPin size={16} className="text-red-500"/>
-                      <span>{appt.clinic_name || 'Atención a Domicilio / Independiente'}</span>
+                    <div className="flex items-start gap-2">
+                      <MapPin size={16} className="text-red-500 shrink-0 mt-0.5"/>
+                      <div>
+                        <span>{appt.clinic_name || 'Atención a Domicilio / Independiente'}</span>
+                        {/* ✅ NUEVO: dirección de la clínica */}
+                        {appt.clinic_address && (
+                          <p className="text-xs text-gray-400">{appt.clinic_address}</p>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2 md:col-span-2">
                       <Calendar size={16} className="text-green-500"/>
                       <span className="font-semibold">{appt.formatted_date}</span>
                     </div>
+                    {/* ✅ NUEVO: motivo de la cita */}
+                    {appt.reason && (
+                      <div className="flex items-start gap-2 md:col-span-2 bg-gray-50 rounded-xl px-3 py-2">
+                        <ClipboardList size={15} className="text-gray-400 shrink-0 mt-0.5"/>
+                        <span className="text-xs text-gray-600 italic">{appt.reason}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Acciones de Reseña */}

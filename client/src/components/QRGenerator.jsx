@@ -10,6 +10,7 @@ import {
   Clock
 } from 'lucide-react';
 
+
 const QRGenerator = ({ petId, petName, mode = 'READ_ONLY' }) => {
 
   const [clinics, setClinics] = useState([]);
@@ -21,34 +22,37 @@ const QRGenerator = ({ petId, petName, mode = 'READ_ONLY' }) => {
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
   const FRONTEND_URL = window.location.origin;
 
+
   /* =========================
      CARGA DE CLÍNICAS
   ==========================*/
   useEffect(() => {
     if (mode === 'WRITE') {
-      fetch(`${API_URL}/public/clinics`)
-
+      fetch(`${API_URL}/api/public/clinics`)
         .then(res => res.json())
-        .then(data => setClinics(data || []))
+        // ✅ CAMBIO: Array.isArray protege si el servidor devuelve un objeto de error
+        .then(data => setClinics(Array.isArray(data) ? data : []))
         .catch(err => console.error("Error clinics:", err));
     }
   }, [mode, API_URL]);
+
 
   /* =========================
      VETERINARIOS POR CLÍNICA
   ==========================*/
   useEffect(() => {
     if (!selectedClinicId) return;
-
     if (selectedClinicId === 'independent') return;
 
-    fetch(`${API_URL}/public/veterinarians/by-clinic/${selectedClinicId}`)
-
+    // ✅ CAMBIO: /public/veterinarians → /api/public/veterinarians
+    fetch(`${API_URL}/api/public/veterinarians/by-clinic/${selectedClinicId}`)
       .then(res => res.json())
-      .then(data => setVets(data || []))
+      // ✅ CAMBIO: Array.isArray protege si el servidor devuelve un objeto de error
+      .then(data => setVets(Array.isArray(data) ? data : []))
       .catch(err => console.error("Error vets:", err));
 
   }, [selectedClinicId, API_URL]);
+
 
   /* =========================
      VETERINARIOS INDEPENDIENTES
@@ -67,7 +71,7 @@ const QRGenerator = ({ petId, petName, mode = 'READ_ONLY' }) => {
         });
 
         const data = await res.json();
-        const list = data.veterinarians || data || [];
+        const list = Array.isArray(data) ? data : (data.veterinarians || []);
 
         const independents = list.filter(v =>
           v.clinic_id === 'independent' || !v.clinic_id
@@ -85,11 +89,13 @@ const QRGenerator = ({ petId, petName, mode = 'READ_ONLY' }) => {
 
   }, [selectedClinicId, API_URL]);
 
+
   const handleClinicChange = (e) => {
     setSelectedClinicId(e.target.value);
     setVets([]); 
     setSelectedVetName('');
   };
+
 
   const qrValue = useMemo(() => {
 
@@ -108,6 +114,7 @@ const QRGenerator = ({ petId, petName, mode = 'READ_ONLY' }) => {
     return `${FRONTEND_URL}/vet-access/${petId}?${params}`;
 
   }, [petId, mode, selectedClinicId, selectedVetName, timestamp, FRONTEND_URL]);
+
 
   const handleDownloadQR = () => {
 
@@ -134,7 +141,9 @@ const QRGenerator = ({ petId, petName, mode = 'READ_ONLY' }) => {
     img.src = "data:image/svg+xml;base64," + btoa(svgData);
   };
 
+
   const isRead = mode === 'READ_ONLY';
+
 
   return (
     <div className="w-full max-w-sm mx-auto">
@@ -180,7 +189,6 @@ const QRGenerator = ({ petId, petName, mode = 'READ_ONLY' }) => {
                 onChange={(e) => setSelectedVetName(e.target.value)}
               >
                 <option value="">Selecciona al Doctor</option>
-
                 {vets.map(v => (
                   <option key={v.id} value={v.name}>
                     {v.name}
