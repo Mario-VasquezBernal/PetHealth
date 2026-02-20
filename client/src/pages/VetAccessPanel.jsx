@@ -3,39 +3,42 @@ import { useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   ClipboardCheck, Save, User, Building2,
-  CheckCircle, Thermometer, Heart, Weight, Clock, Loader
+  CheckCircle, Thermometer, Heart, Weight, Clock, Loader, Syringe
 } from 'lucide-react';
 
 const VetAccessPanel = () => {
 
-  const { token } = useParams(); // ✅ token QR de la URL /qr/:token
+  const { token } = useParams();
 
-  const [pet, setPet]               = useState(null);
+  const [pet, setPet]                     = useState(null);
   const [assignedVet, setAssignedVet]     = useState(null);
   const [assignedClinic, setAssignedClinic] = useState(null);
-  const [loading, setLoading]       = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess]       = useState(false);
-  const [tokenValid, setTokenValid] = useState(false);
+  const [loading, setLoading]             = useState(true);
+  const [submitting, setSubmitting]       = useState(false);
+  const [success, setSuccess]             = useState(false);
+  const [tokenValid, setTokenValid]       = useState(false);
   const [requiresReview, setRequiresReview] = useState(false);
+  const [hasVaccine, setHasVaccine]       = useState(false); // ← NUEVO
 
   const [formData, setFormData] = useState({
-    visit_type:  'Consulta General',
-    diagnosis:   '',
-    treatment:   '',
-    weight:      '',
-    temperature: '',
-    heart_rate:  '',
-    notes:       '',
-    next_visit:  ''
+    visit_type:            'Consulta General',
+    diagnosis:             '',
+    treatment:             '',
+    weight:                '',
+    temperature:           '',
+    heart_rate:            '',
+    notes:                 '',
+    next_visit:            '',
+    // ── NUEVOS: campos de vacuna
+    vaccine_name:          '',
+    vaccine_applied_date:  '',
+    vaccine_next_due_date: '',
+    vaccine_notes:         ''
   });
 
   const API_URL = import.meta.env.VITE_API_URL || 'https://pethealth-production.up.railway.app';
 
-  // ===============================
-  // VALIDAR TOKEN QR
-  // ✅ CAMBIO: usa /qr/validate/:token (BD) en lugar de query params
-  // ===============================
+  // ── VALIDAR TOKEN QR
   useEffect(() => {
     if (!token) return;
 
@@ -50,14 +53,14 @@ const VetAccessPanel = () => {
         }
 
         const data = await res.json();
-
         setPet(data.pet);
         setAssignedVet(data.assignedVet);
         setAssignedClinic(data.assignedClinic);
         setTokenValid(true);
 
-        console.log('✅ Vet asignado:', data.assignedVet);
-        console.log('✅ Clínica asignada:', data.assignedClinic);
+        // Fecha de hoy por defecto para la vacuna
+        const today = new Date().toISOString().split('T')[0];
+        setFormData(prev => ({ ...prev, vaccine_applied_date: today }));
 
       } catch (err) {
         console.error(err);
@@ -71,9 +74,7 @@ const VetAccessPanel = () => {
     validateToken();
   }, [token, API_URL]);
 
-  // ===============================
-  // SUBMIT
-  // ===============================
+  // ── SUBMIT
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -81,13 +82,16 @@ const VetAccessPanel = () => {
       return toast.warning('Completa diagnóstico y tratamiento');
     }
 
+    // Validar vacuna si está activada
+    if (hasVaccine && !formData.vaccine_name.trim()) {
+      return toast.warning('Ingresa el nombre de la vacuna');
+    }
+
     setSubmitting(true);
 
     try {
-      // ✅ CAMBIO: enviamos 'token' QR para que el servidor resuelva
-      // pet_id, vet_id, clinic_id desde la BD — no desde query params
       const payload = {
-        token,                                          // ✅ token QR → resuelve todo en el servidor
+        token,
         diagnosis:         formData.diagnosis,
         treatment:         formData.treatment,
         recorded_weight:   formData.weight      ? parseFloat(formData.weight)      : null,
@@ -96,9 +100,13 @@ const VetAccessPanel = () => {
         notes:             formData.notes       || null,
         next_visit:        requiresReview ? formData.next_visit : null,
         visit_type:        formData.visit_type,
-        // fallback por si el servidor necesita nombres
         veterinarian_name: assignedVet?.name    || '',
         clinic_name:       assignedClinic?.name || '',
+        // ── Vacuna (solo si el vet activó la sección)
+        vaccine_name:          hasVaccine ? formData.vaccine_name.trim()          : null,
+        vaccine_applied_date:  hasVaccine ? formData.vaccine_applied_date         : null,
+        vaccine_next_due_date: hasVaccine ? formData.vaccine_next_due_date || null : null,
+        vaccine_notes:         hasVaccine ? formData.vaccine_notes || null         : null,
       };
 
       const response = await fetch(`${API_URL}/api/public/medical-records`, {
@@ -112,8 +120,16 @@ const VetAccessPanel = () => {
         throw new Error(err.message || 'Error al guardar');
       }
 
+      const result = await response.json();
+
+      // Mostrar confirmación diferenciada si se guardó vacuna
+      if (result.vaccination_saved) {
+        toast.success(`✅ Consulta y vacuna "${formData.vaccine_name}" registradas`);
+      } else {
+        toast.success("✅ Consulta registrada correctamente");
+      }
+
       setSuccess(true);
-      toast.success("✅ Consulta registrada correctamente");
 
     } catch (err) {
       console.error(err);
@@ -126,9 +142,7 @@ const VetAccessPanel = () => {
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  // ===============================
-  // UI STATES
-  // ===============================
+  // ── UI STATES
   if (loading) return (
     <div className="h-screen flex flex-col items-center justify-center gap-3">
       <Loader className="w-10 h-10 text-green-600 animate-spin" />
@@ -145,23 +159,32 @@ const VetAccessPanel = () => {
   );
 
   if (success) return (
-    <div className="h-screen flex flex-col items-center justify-center bg-green-50">
+    <div className="h-screen flex flex-col items-center justify-center bg-green-50 text-center px-6">
       <CheckCircle className="w-24 h-24 text-green-600 mb-4" />
       <h1 className="text-2xl font-bold">¡Consulta Guardada!</h1>
       <p className="text-gray-500 mt-2">El registro médico se guardó correctamente.</p>
+      {hasVaccine && formData.vaccine_name && (
+        <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl px-6 py-3">
+          <p className="text-blue-800 font-medium">
+            💉 Vacuna registrada: <strong>{formData.vaccine_name}</strong>
+          </p>
+          {formData.vaccine_next_due_date && (
+            <p className="text-blue-600 text-sm mt-1">
+              Próxima dosis: {formData.vaccine_next_due_date}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 
-  // ===============================
-  // FORM
-  // ===============================
+  // ── FORM
   return (
     <div className="min-h-screen bg-green-50 pb-12">
 
       {/* HEADER */}
       <div className="bg-green-700 text-white p-6">
         <div className="max-w-2xl mx-auto">
-
           <div className="flex items-center gap-4 mb-4">
             <ClipboardCheck size={24} />
             <div>
@@ -170,7 +193,6 @@ const VetAccessPanel = () => {
             </div>
           </div>
 
-          {/* INFO VET Y CLÍNICA — datos reales de la BD */}
           <div className="bg-black/20 rounded-xl p-4 flex gap-6">
             <div className="flex items-center gap-2">
               <User size={18} />
@@ -190,7 +212,6 @@ const VetAccessPanel = () => {
               </div>
             </div>
           </div>
-
         </div>
       </div>
 
@@ -219,6 +240,7 @@ const VetAccessPanel = () => {
           {/* FORMULARIO */}
           <form onSubmit={handleSubmit} className="space-y-4">
 
+            {/* Tipo de visita */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Tipo de Visita</label>
               <select
@@ -235,6 +257,7 @@ const VetAccessPanel = () => {
               </select>
             </div>
 
+            {/* Diagnóstico */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Diagnóstico *</label>
               <input
@@ -244,6 +267,7 @@ const VetAccessPanel = () => {
               />
             </div>
 
+            {/* Tratamiento */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Tratamiento *</label>
               <textarea
@@ -282,6 +306,7 @@ const VetAccessPanel = () => {
               </div>
             </div>
 
+            {/* Notas */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Notas adicionales</label>
               <textarea
@@ -290,6 +315,92 @@ const VetAccessPanel = () => {
                 rows={2}
                 className="w-full p-3 border rounded-xl resize-none"
               />
+            </div>
+
+            {/* ── SECCIÓN VACUNA ── */}
+            <div className="border border-blue-200 rounded-xl overflow-hidden">
+              {/* Toggle header */}
+              <button
+                type="button"
+                onClick={() => setHasVaccine(!hasVaccine)}
+                className={`w-full p-4 flex items-center justify-between transition-colors ${
+                  hasVaccine ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-800'
+                }`}
+              >
+                <div className="flex items-center gap-2 font-semibold">
+                  <Syringe size={18} />
+                  <span>¿Se aplicó una vacuna?</span>
+                </div>
+                <span className={`text-sm px-3 py-1 rounded-full font-medium ${
+                  hasVaccine ? 'bg-white text-blue-700' : 'bg-blue-200 text-blue-700'
+                }`}>
+                  {hasVaccine ? 'Sí — completar datos' : 'No'}
+                </span>
+              </button>
+
+              {/* Campos de vacuna — solo visibles si hasVaccine */}
+              {hasVaccine && (
+                <div className="p-4 bg-blue-50 space-y-3">
+
+                  {/* Nombre */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Nombre de la vacuna *
+                    </label>
+                    <input
+                      type="text"
+                      name="vaccine_name"
+                      placeholder="Ej: Rabia, Parvo, Moquillo, Bordetella..."
+                      value={formData.vaccine_name}
+                      onChange={handleChange}
+                      className="w-full p-3 border border-blue-200 rounded-xl text-sm"
+                    />
+                  </div>
+
+                  {/* Fechas */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        Fecha de aplicación
+                      </label>
+                      <input
+                        type="date"
+                        name="vaccine_applied_date"
+                        value={formData.vaccine_applied_date}
+                        onChange={handleChange}
+                        className="w-full p-3 border border-blue-200 rounded-xl text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        Próxima dosis
+                      </label>
+                      <input
+                        type="date"
+                        name="vaccine_next_due_date"
+                        value={formData.vaccine_next_due_date}
+                        onChange={handleChange}
+                        className="w-full p-3 border border-blue-200 rounded-xl text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Notas vacuna */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Notas de vacuna
+                    </label>
+                    <input
+                      type="text"
+                      name="vaccine_notes"
+                      placeholder="Lote, marca, reacciones observadas..."
+                      value={formData.vaccine_notes}
+                      onChange={handleChange}
+                      className="w-full p-3 border border-blue-200 rounded-xl text-sm"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* PRÓXIMA REVISIÓN */}
