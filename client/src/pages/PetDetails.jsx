@@ -7,8 +7,6 @@ import MobileHeader from '../components/MobileHeader';
 import { getPetById, deletePetFromStorage, getMedicalRecords, getUserProfile } from '../dataManager';
 import QRGenerator from '../components/QRGenerator';
 import MedicalHistory from '../components/MedicalHistory';
-import WeightPrediction from '../components/WeightPrediction';
-import HealthRiskCalculator from '../components/HealthRiskCalculator';
 import HealthAIPredictor from '../components/HealthAIPredictor';
 import StyledQRCard from '../components/StyledQRCard';
 
@@ -370,10 +368,7 @@ const PetDetails = () => {
                         </p>
                       </div>
                     </div>
-
-                    <WeightPrediction petId={id} pet={pet} />
-
-                    <HealthRiskCalculator pet={pet} />
+                    
                     <HealthAIPredictor petId={pet.id} pet={pet} />
 
 
