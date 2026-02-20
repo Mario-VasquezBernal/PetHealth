@@ -182,5 +182,30 @@ router.delete('/:id', authorization, async (req, res) => {
     res.status(500).json({ error: 'Error al eliminar' });
   }
 });
+// GET: conteo de consultas por veterinario
+router.get('/consult-counts', authorization, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT veterinarian_name, COUNT(*) as count
+      FROM medical_records
+      WHERE veterinarian_name IS NOT NULL
+      GROUP BY veterinarian_name
+    `);
+
+    // Cruzar con IDs reales
+    const vets = await pool.query(`SELECT id, name FROM veterinarians`);
+    const counts = vets.rows.map(v => ({
+      vet_id: v.id,
+      count:  result.rows.find(r =>
+        r.veterinarian_name?.toLowerCase() === v.name?.toLowerCase()
+      )?.count || 0
+    }));
+
+    res.json(counts);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error contando consultas' });
+  }
+});
 
 module.exports = router;

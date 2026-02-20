@@ -100,11 +100,9 @@ router.get('/:id/reviews', authorization, async (req, res) => {
     res.status(500).json({ error: 'Error obteniendo reseñas' });
   }
 });
-
 // ==================================================
 // 3. RUTAS DE GESTIÓN (CRUD ADMIN)
 // ==================================================
-
 router.delete('/:id', authorization, async (req, res) => {
   try {
     const { id } = req.params;
@@ -117,30 +115,45 @@ router.delete('/:id', authorization, async (req, res) => {
 });
 
 router.put('/:id', authorization, async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { name, address, phone } = req.body; // Quitamos email del body también
-        await pool.query(
-            'UPDATE clinics SET name = $1, address = $2, phone = $3 WHERE id = $4',
-            [name, address, phone, id]
-        );
-        res.json({ message: 'Clínica actualizada' });
-    } catch (err) {
-        res.status(500).json({ error: 'Error al actualizar' });
-    }
+  try {
+    const { id } = req.params;
+    const { name, address, city, phone, latitude, longitude } = req.body;
+
+    const validLat = latitude  && !isNaN(parseFloat(latitude))  ? parseFloat(latitude)  : null;
+    const validLng = longitude && !isNaN(parseFloat(longitude)) ? parseFloat(longitude) : null;
+
+    await pool.query(
+      `UPDATE clinics
+       SET name = $1, address = $2, city = $3, phone = $4,
+           latitude = $5, longitude = $6
+       WHERE id = $7`,
+      [name, address, city || null, phone, validLat, validLng, id]
+    );
+    res.json({ message: 'Clínica actualizada' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al actualizar' });
+  }
 });
 
 router.post('/', authorization, async (req, res) => {
-    try {
-        const { name, address, phone } = req.body; // Quitamos email
-        const newClinic = await pool.query(
-            'INSERT INTO clinics (name, address, phone) VALUES ($1, $2, $3) RETURNING *',
-            [name, address, phone]
-        );
-        res.json(newClinic.rows[0]);
-    } catch (err) {
-        res.status(500).json({ error: 'Error al crear' });
-    }
+  try {
+    const { name, address, city, phone, latitude, longitude } = req.body;
+
+    const validLat = latitude  && !isNaN(parseFloat(latitude))  ? parseFloat(latitude)  : null;
+    const validLng = longitude && !isNaN(parseFloat(longitude)) ? parseFloat(longitude) : null;
+
+    const newClinic = await pool.query(
+      `INSERT INTO clinics (name, address, city, phone, latitude, longitude)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [name, address, city || null, phone, validLat, validLng]
+    );
+    res.json(newClinic.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al crear' });
+  }
 });
 
 module.exports = router;
