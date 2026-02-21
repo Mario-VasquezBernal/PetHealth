@@ -10,9 +10,9 @@ const {
   bayesVaccinationRisk
 } = require('./bayesEngine');
 
-const { predictMarkov }          = require('./markovEngine');
+const { predictMarkov } = require('./markovEngine');
 const { lifestyleRiskFactors, lifestylePriorModifier } = require('./scoringEngine');
-const { predictWeight }          = require('./weightPredictor');
+const { predictWeight } = require('./weightPredictor');
 
 // ---- Perfiles de especie (sin cambio vs tu código actual) ----
 const speciesProfiles = {
@@ -54,16 +54,26 @@ function normalizeSpeciesBackend(pet) {
 function analyzeVaccinations(vaccinations = []) {
   const today = new Date();
   const overdue = { rabies: false, parvo: false, distemper: false };
+
   for (const v of vaccinations) {
-    if (!v.next_due_date) continue;
-    const due = new Date(v.next_due_date);
+    // Soporta datos crudos de DB y el formato mapeado desde React
+    const next =
+      v.next_due_date ||   // columna real de la tabla
+      v.next_date ||       // posible alias desde el frontend
+      null;
+
+    if (!next) continue;
+
+    const due = new Date(next);
     if (due < today) {
-      const name = (v.vaccine_name || '').toLowerCase();
-      if (name.includes('rabia') || name.includes('rabies'))      overdue.rabies = true;
-      if (name.includes('parvo'))                                 overdue.parvo = true;
+      const name = (v.vaccine_name || v.name || '').toLowerCase();
+
+      if (name.includes('rabia') || name.includes('rabies'))       overdue.rabies = true;
+      if (name.includes('parvo'))                                  overdue.parvo = true;
       if (name.includes('moquillo') || name.includes('distemper')) overdue.distemper = true;
     }
   }
+
   return overdue;
 }
 
@@ -117,8 +127,8 @@ function predictHealth(pet, lifestyle, weightHistory = [], vaccinations = [], me
 
   // ── 2. PRIOR BASE ajustado por catálogo de especie + estilo de vida
   const basePrior = aiProfile.baseRisk === 'high'   ? 0.45 :
-                    aiProfile.baseRisk === 'medium'  ? 0.30 :
-                    aiProfile.baseRisk === 'low'     ? 0.18 : 0.28;
+                    aiProfile.baseRisk === 'medium' ? 0.30 :
+                    aiProfile.baseRisk === 'low'    ? 0.18 : 0.28;
 
   const adjustedPrior = Math.min(0.90, basePrior * priorModifier);
 
@@ -242,12 +252,12 @@ function predictHealth(pet, lifestyle, weightHistory = [], vaccinations = [], me
 
   // ── 11. SCORE DE URGENCIA DE CONSULTA (0-100)
   const urgencyScore = Math.min(100, Math.round(
-  obesityProbFinal  * 30 +
-  renalProbFinal    * 25 +
-  cardiacProb       * 20 +
-  vaccinationProb   * 15 +
-  hipProb           * 10
-));
+    obesityProbFinal  * 30 +
+    renalProbFinal    * 25 +
+    cardiacProb       * 20 +
+    vaccinationProb   * 15 +
+    hipProb           * 10
+  ));
 
   const urgencyLevel =
     urgencyScore >= 70 ? 'critical' :
@@ -265,7 +275,7 @@ function predictHealth(pet, lifestyle, weightHistory = [], vaccinations = [], me
 
     // Obesidad — mismo campo que antes, ahora Bayes real
     obesity: {
-      probability:  Math.round(obesityProbFinal * 100),
+      probability:   Math.round(obesityProbFinal * 100),
       probabilityRaw: +obesityProbFinal.toFixed(3),
       severity:
         obesityProbFinal > 0.70 ? 'high' :
@@ -304,8 +314,8 @@ function predictHealth(pet, lifestyle, weightHistory = [], vaccinations = [], me
 
     // Vacunas
     vaccinationRisk: {
-      probability:     Math.round(vaccinationProb * 100),
-      probabilityRaw:  +vaccinationProb.toFixed(3),
+      probability:      Math.round(vaccinationProb * 100),
+      probabilityRaw:   +vaccinationProb.toFixed(3),
       criticalVaccines,
       hasOverdueVaccines: criticalVaccines.length > 0
     },

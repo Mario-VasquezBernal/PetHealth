@@ -81,5 +81,22 @@ router.post('/health-prediction', authorization, async (req, res) => {
     res.status(500).json({ error: 'Error generando predicción IA' });
   }
 });
+// Antes del module.exports
+router.get('/pet/:id/vaccines', authorization, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `SELECT id, pet_id, vaccine_name, applied_date, next_due_date, veterinarian, notes
+       FROM vaccinations
+       WHERE pet_id = $1
+       ORDER BY next_due_date ASC NULLS LAST`,
+      [id]
+    );
+    res.json({ vaccines: result.rows });
+  } catch (err) {
+    console.error('Error fetching vaccines', err);
+    res.status(500).json({ error: 'Error fetching vaccines' });
+  }
+});
 
 module.exports = router;

@@ -3,25 +3,27 @@
 // ============================================
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Building2, User, Calendar, PawPrint } from 'lucide-react';
+import { Building2, User, Calendar, PawPrint, Clock, AlignLeft } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const AppointmentForm = ({ onSuccess }) => {
-  const [clinics, setClinics]       = useState([]);
-  const [vets, setVets]             = useState([]);
-  const [pets, setPets]             = useState([]);
+  const [clinics, setClinics] = useState([]);
+  const [vets, setVets] = useState([]);
+  const [pets, setPets] = useState([]);
   const [selectedClinic, setSelectedClinic] = useState('');
-  const [selectedVet, setSelectedVet]       = useState('');
-  const [selectedPet, setSelectedPet]       = useState('');
-  const [date, setDate]             = useState('');
-  const [time, setTime]             = useState('');
-  const [reason, setReason]         = useState('');
-  const [isIndependent, setIsIndependent]   = useState(false);
-  const [loading, setLoading]       = useState(false);
+  const [selectedVet, setSelectedVet] = useState('');
+  const [selectedPet, setSelectedPet] = useState('');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [reason, setReason] = useState('');
+  const [isIndependent, setIsIndependent] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-  // 1. Cargar datos al inicio
+  // Obtener fecha de hoy en formato YYYY-MM-DD para validación
+  const todayStr = new Date().toISOString().split('T')[0];
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -42,11 +44,9 @@ const AppointmentForm = ({ onSuccess }) => {
     fetchData();
   }, [API_URL]);
 
-  // 2. Cambio de Clínica — ✅ nuevo caso 'independent'
   const handleClinicChange = (e) => {
     const value = e.target.value;
     setSelectedVet('');
-
     if (value === 'independent') {
       setSelectedClinic('independent');
       setIsIndependent(true);
@@ -56,7 +56,6 @@ const AppointmentForm = ({ onSuccess }) => {
     }
   };
 
-  // 3. Cambio de Veterinario — auto-selecciona clínica/independiente
   const handleVetChange = (e) => {
     const vetId = e.target.value;
     setSelectedVet(vetId);
@@ -66,69 +65,80 @@ const AppointmentForm = ({ onSuccess }) => {
         setSelectedClinic(vetInfo.clinic_id);
         setIsIndependent(false);
       } else {
-        setSelectedClinic('independent'); // ✅ auto-marca independiente
+        setSelectedClinic('independent');
         setIsIndependent(true);
       }
     }
   };
 
-  // 4. Filtrado de veterinarios según clínica seleccionada
   const filteredVets =
     selectedClinic === 'independent'
-      ? vets.filter(v => !v.clinic_id)                                           // solo independientes
+      ? vets.filter(v => !v.clinic_id)
       : selectedClinic
-        ? vets.filter(v => v.clinic_id === selectedClinic || v.clinic_id === parseInt(selectedClinic)) // solo de esa clínica
-        : vets;                                                                   // todos (sin filtro)
+      ? vets.filter(v => v.clinic_id === selectedClinic || v.clinic_id === parseInt(selectedClinic))
+      : vets;
 
-  // 5. Enviar cita
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedPet)                         return toast.warning('Selecciona una mascota');
-    if (!selectedVet)                         return toast.warning('Selecciona un veterinario');
-    if (!isIndependent && !selectedClinic)    return toast.warning('Selecciona una clínica');
-    if (!date || !time)                       return toast.warning('Selecciona fecha y hora');
+
+    // VALIDACIONES
+    if (!selectedPet) return toast.warning('🐶 Selecciona una mascota');
+    if (!selectedVet) return toast.warning('👨‍⚕️ Selecciona un veterinario');
+    if (!isIndependent && !selectedClinic) return toast.warning('🏥 Selecciona una clínica');
+    if (!date) return toast.warning('📅 Selecciona la fecha');
+    if (!time) return toast.warning('⏰ Selecciona la hora');
+    
+    // Validación de fecha pasada
+    if (date < todayStr) return toast.error('❌ No puedes agendar citas en fechas pasadas');
+
+    // Validación de motivo
+    if (!reason.trim()) return toast.warning('📋 Escribe el motivo de la consulta');
+    if (reason.trim().length < 5) return toast.warning('📋 El motivo debe ser más detallado (mín. 5 letras)');
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\\s,.-]+$/.test(reason)) {
+      return toast.warning('📋 El motivo contiene caracteres no permitidos');
+    }
 
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
       await axios.post(`${API_URL}/appointments`, {
-        pet_id:          selectedPet,
+        pet_id: selectedPet,
         veterinarian_id: selectedVet,
-        clinic_id:       isIndependent ? null : selectedClinic,
-        date:            `${date} ${time}`,
-        reason
+        clinic_id: isIndependent ? null : selectedClinic,
+        date: `${date} ${time}`,
+        reason: reason.trim()
       }, { headers: { Authorization: `Bearer ${token}` } });
 
-      toast.success("Cita agendada correctamente");
+      toast.success("✅ Cita agendada correctamente");
       setReason(''); setDate(''); setTime('');
       setSelectedVet(''); setSelectedClinic(''); setIsIndependent(false);
       if (onSuccess) onSuccess();
     } catch (error) {
       console.error(error);
-      toast.error("Error al agendar la cita");
+      toast.error("❌ Error al agendar la cita");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8">
+    <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 mb-8 mx-auto max-w-2xl">
       <div className="text-center mb-6">
-        <h2 className="text-xl font-bold text-gray-900 flex items-center justify-center gap-2">
+        <h2 className="text-xl font-black text-gray-900 flex items-center justify-center gap-2">
           <Calendar className="text-blue-600" /> Nueva Cita
         </h2>
         <p className="text-sm text-gray-500">Completa los datos para agendar.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-
+      <form onSubmit={handleSubmit} className="space-y-5" autoComplete="off">
         {/* MASCOTA */}
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">Mascota</label>
+        <div className="space-y-1">
+          <label className="block text-xs font-black uppercase text-gray-500 ml-1">Mascota</label>
           <div className="relative">
-            <PawPrint className="absolute left-3 top-3 text-gray-400" size={18} />
+            <PawPrint className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <select
-              className="w-full pl-10 pr-4 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              autoComplete="none"
+              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700 font-medium"
               value={selectedPet}
               onChange={(e) => setSelectedPet(e.target.value)}
             >
@@ -138,63 +148,51 @@ const AppointmentForm = ({ onSuccess }) => {
           </div>
         </div>
 
-        {/* CLÍNICA — ✅ nueva opción Independiente */}
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">Clínica</label>
+        {/* CLÍNICA */}
+        <div className="space-y-1">
+          <label className="block text-xs font-black uppercase text-gray-500 ml-1">Clínica</label>
           <div className="relative">
-            <Building2 className="absolute left-3 top-3 text-gray-400" size={18} />
+            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <select
-              className="w-full pl-10 pr-4 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              autoComplete="none"
+              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700 font-medium"
               value={selectedClinic}
               onChange={handleClinicChange}
             >
               <option value="">Seleccionar Clínica...</option>
-
-              {/* ✅ Opción especial independiente */}
-              <option value="independent">🏠 Independiente</option>
-
-              {/* Separador visual */}
+              <option value="independent">🏠 Independiente / A Domicilio</option>
               <option disabled>──────────────</option>
-
               {clinics.map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
-
-            {/* Badge visual cuando está en modo independiente */}
-            {isIndependent && (
-              <span className="inline-block mt-1 text-xs text-emerald-600 font-semibold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                ✓ Atención independiente — sin clínica asignada
-              </span>
-            )}
           </div>
+          {isIndependent && (
+            <span className="inline-block mt-1 text-[10px] text-emerald-600 font-black bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full uppercase tracking-tighter">
+              ✓ Atención independiente — sin clínica asignada
+            </span>
+          )}
         </div>
 
-        {/* VETERINARIO — filtrado según selección */}
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">
-            Veterinario
-            {isIndependent && (
-              <span className="ml-2 text-xs text-emerald-500 font-normal">solo independientes</span>
-            )}
+        {/* VETERINARIO */}
+        <div className="space-y-1">
+          <label className="block text-xs font-black uppercase text-gray-500 ml-1">
+            Veterinario {isIndependent && <span className="text-emerald-500 lowercase">(solo independientes)</span>}
           </label>
           <div className="relative">
-            <User className="absolute left-3 top-3 text-gray-400" size={18} />
+            <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <select
-              className="w-full pl-10 pr-4 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              autoComplete="none"
+              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700 font-medium"
               value={selectedVet}
               onChange={handleVetChange}
             >
               <option value="">Seleccionar Veterinario...</option>
-
-              {/* Con clínica seleccionada (real o independiente): lista plana */}
               {selectedClinic && filteredVets.map(v => (
                 <option key={v.id} value={v.id}>
-                  {v.name} ({v.specialty || 'General'})
+                  {v.name} ({v.specialty || 'Gral.'})
                 </option>
               ))}
-
-              {/* Sin clínica: lista agrupada */}
               {!selectedClinic && (
                 <>
                   <optgroup label="Independientes">
@@ -213,46 +211,55 @@ const AppointmentForm = ({ onSuccess }) => {
           </div>
         </div>
 
-        {/* FECHA Y HORA */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Fecha</label>
-            <input
-              type="date"
-              className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
+        {/* FECHA Y HORA — Ajuste Grid Mobile */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className="block text-xs font-black uppercase text-gray-500 ml-1">Fecha</label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input
+                type="date"
+                min={todayStr}
+                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Hora</label>
-            <input
-              type="time"
-              className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-            />
+          <div className="space-y-1">
+            <label className="block text-xs font-black uppercase text-gray-500 ml-1">Hora</label>
+            <div className="relative">
+              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input
+                type="time"
+                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+              />
+            </div>
           </div>
         </div>
 
         {/* MOTIVO */}
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">Motivo</label>
-          <textarea
-            className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-            rows="2"
-            placeholder="Ej: Vacunación anual..."
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-          />
+        <div className="space-y-1">
+          <label className="block text-xs font-black uppercase text-gray-500 ml-1">Motivo de consulta</label>
+          <div className="relative">
+            <AlignLeft className="absolute left-3 top-4 text-gray-400" size={18} />
+            <textarea
+              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium resize-none min-h-[100px]"
+              placeholder="Ej: Control de vacunas, desparasitación..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+          </div>
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-500/30 disabled:opacity-50"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl transition-all shadow-lg shadow-blue-500/30 disabled:opacity-50 uppercase tracking-widest text-sm"
         >
-          {loading ? 'Agendando...' : 'Confirmar Cita'}
+          {loading ? 'Procesando...' : 'Confirmar Cita 🐾'}
         </button>
       </form>
     </div>
