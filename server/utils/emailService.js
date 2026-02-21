@@ -9,7 +9,7 @@ const sendEmail = async (to, subject, text) => {
     
     const msg = {
       to: to,
-      from: 'mxvasquez@sudamericano.edu.ec',
+      from: 'pethealth482@gmail.com',
       subject: subject,
       text: text,
     };
