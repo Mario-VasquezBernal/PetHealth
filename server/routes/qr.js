@@ -11,22 +11,31 @@ const QRCode = require("qrcode");
 router.get("/options", authorization, async (req, res) => {
   try {
     const vetsQuery = await pool.query(
-      'SELECT id, name, specialty, clinic_id FROM veterinarians ORDER BY name'
+      `SELECT id, name, specialty, clinic_id
+       FROM veterinarians
+       WHERE user_id = $1
+       ORDER BY name`,
+      [req.user.id]
     );
 
     const clinicsQuery = await pool.query(
-      'SELECT id, name, address, phone FROM clinics ORDER BY name'
+      `SELECT id, name, address, phone
+       FROM clinics
+       WHERE user_id = $1
+       ORDER BY name`,
+      [req.user.id]
     );
 
     return res.json({
       veterinarians: vetsQuery.rows,
-      clinics: clinicsQuery.rows
+      clinics:       clinicsQuery.rows
     });
   } catch (err) {
     console.error("Error al obtener opciones:", err.message);
     return res.status(500).json({ error: "Error al cargar opciones" });
   }
 });
+
 
 
 // ========================================

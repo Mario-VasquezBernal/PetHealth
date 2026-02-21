@@ -4,10 +4,11 @@ const sendEmail = require("../utils/emailService");
 
 function startAppointmentReminderCron() {
 
+  // ============================================
+  // CADA 10 MIN: Recordatorios de citas próximas
+  // ============================================
   cron.schedule("*/10 * * * *", async () => {
-
     try {
-
       console.log("⏰ Buscando citas para recordatorio...");
 
       const result = await pool.query(`
@@ -27,9 +28,7 @@ function startAppointmentReminderCron() {
       `);
 
       for (const row of result.rows) {
-
         const subject = "Recordatorio de cita - PetHealth";
-
         const message = `
 Hola ${row.full_name || ""},
 
@@ -44,22 +43,41 @@ PetHealth 🐾
         `;
 
         await sendEmail(row.email, subject, message);
-
         await pool.query(
           "UPDATE appointments SET reminder_sent = true WHERE id = $1",
           [row.id]
         );
-
         console.log("✅ Recordatorio enviado:", row.id);
       }
 
     } catch (err) {
-      console.error("❌ Error en cron:", err.message);
+      console.error("❌ Error en cron de recordatorios:", err.message);
     }
-
   });
 
-  console.log("🚀 Cron de recordatorios iniciado");
+  // ============================================
+  // CADA HORA: Marcar citas pasadas como 'completed'
+  // ============================================
+  cron.schedule("0 * * * *", async () => {
+    try {
+      const result = await pool.query(`
+        UPDATE appointments
+        SET status = 'completed'
+        WHERE status = 'scheduled'
+          AND date < NOW()
+        RETURNING id
+      `);
+
+      if (result.rowCount > 0) {
+        console.log(`✅ ${result.rowCount} cita(s) marcadas como completed`);
+      }
+
+    } catch (err) {
+      console.error("❌ Error en cron de auto-complete:", err.message);
+    }
+  });
+
+  console.log("🚀 Cron de recordatorios y auto-complete iniciado");
 }
 
 module.exports = startAppointmentReminderCron;
