@@ -23,16 +23,7 @@ console.log('🔐 JWT Secret cargado:', process.env.jwtSecret ? 'SÍ ✅' : 'NO 
 console.log('📧 SendGrid API Key cargado:', process.env.SENDGRID_API_KEY ? 'SÍ ✅' : 'NO ❌');
 
 // Middlewares
-app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'https://pet-health-s659.vercel.app'
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors({ origin: true, credentials: true, methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] }));
 app.use(express.json());
 app.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 
