@@ -64,7 +64,8 @@
 
 
 //const API_URL = import.meta.env.VITE_API_URL || 'https://pethealth-production.up.railway.app'; ORIGINAL 
-const API_URL = 'https://pethealth-production.up.railway.app';
+//const API_URL = 'https://pethealth-production.up.railway.app';
+const API_URL = import.meta.env.VITE_API_URL || 'https://pethealth-production.up.railway.app';
 //const API_URL = 'https://httpbin.org';
 
 
