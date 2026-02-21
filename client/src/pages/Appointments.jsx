@@ -3,10 +3,10 @@
 // ============================================
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
-import axios from 'axios';
 import {
   Calendar, MapPin, Stethoscope, X, Star, Pencil, Trash2, ClipboardList, RefreshCw // ✅ CAMBIO: agregar RefreshCw
 } from 'lucide-react';
+
 
 // Componentes
 import Sidebar from '../components/Sidebar';
@@ -15,20 +15,25 @@ import AppointmentForm from "../components/AppointmentForm";
 import RatingModal from '../components/RatingModal';
 import StarRating from '../components/StarRating';
 
+
 // Data
 import { getAppointments, deleteAppointment, getUserProfile } from '../dataManager';
+
 
 const Appointments = () => {
   const [user, setUser]                 = useState(null);
   const [sidebarOpen, setSidebarOpen]   = useState(false);
   const [appointments, setAppointments] = useState([]);
 
+
   // Estados para Modal de Calificación
   const [isRatingModalOpen, setIsRatingModalOpen]                         = useState(false);
   const [selectedVeterinarianForRating, setSelectedVeterinarianForRating] = useState(null);
   const [selectedAppointmentId, setSelectedAppointmentId]                 = useState(null);
 
+
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 
   // --- 1. FUNCIÓN DE CARGA (Estable) ---
   const loadData = useCallback(async () => {
@@ -37,6 +42,7 @@ const Appointments = () => {
         getAppointments(),
         getUserProfile()
       ]);
+
 
       const formattedAppointments = Array.isArray(appointmentsData)
         ? appointmentsData.map(appt => {
@@ -53,6 +59,7 @@ const Appointments = () => {
           })
         : [];
 
+
       setAppointments(formattedAppointments);
       setUser(userData);
     } catch (error) {
@@ -61,11 +68,13 @@ const Appointments = () => {
     }
   }, []); // Array vacío = Esta función nunca cambia
 
+
   // --- 2. EFECTO DE INICIO ---
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Array vacío = Ejecutar SOLO al montar el componente (Evita bucles)
+
 
   // --- ACCIONES ---
   const handleDeleteAppointment = async (id) => {
@@ -80,48 +89,34 @@ const Appointments = () => {
     }
   };
 
+
   const handleNewAppointment = () => {
     loadData();
   };
 
-  const handleOpenRatingModal = (vetId, appointmentId) => {
-    setSelectedVeterinarianForRating(vetId);
-    setSelectedAppointmentId(appointmentId);
+
+  // ✅ FIX: recibe appt completo y construye objeto { id, name } que RatingModal necesita
+  const handleOpenRatingModal = (appt) => {
+    setSelectedVeterinarianForRating({ id: appt.vet_id, name: appt.vet_name });
+    setSelectedAppointmentId(appt.id);
     setIsRatingModalOpen(true);
   };
 
-  const handleRatingSubmit = async ({ rating, comment }) => {
-    try {
-      await axios.post(
-        `${API_URL}/api/ratings`,
-        {
-          veterinarian_id: selectedVeterinarianForRating,
-          appointment_id: selectedAppointmentId,
-          rating,
-          comment
-        },
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        }
-      );
-      toast.success('¡Calificación enviada!');
-      setIsRatingModalOpen(false);
-      loadData();
-    } catch (error) {
-      console.error(error);
-      toast.error('Error al enviar calificación');
-    }
-  };
+
+
 
   // --- RENDER ---
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar user={user} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} onNewPet={null} />
 
+
       <div className="flex-1 lg:ml-72">
         <MobileHeader onMenuClick={() => setSidebarOpen(true)} onNewPet={null} />
 
+
         <main className="px-4 lg:px-8 py-8 max-w-5xl mx-auto">
+
 
           {/* HEADER */}
           <div className="flex items-center justify-between mb-8">
@@ -139,6 +134,7 @@ const Appointments = () => {
             </button>
           </div>
 
+
           {/* FORMULARIO NUEVA CITA */}
           <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6 mb-8">
             <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -147,12 +143,14 @@ const Appointments = () => {
             <AppointmentForm onAppointmentCreated={handleNewAppointment} />
           </div>
 
+
           {/* LISTA DE CITAS */}
           <div className="space-y-4">
             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <ClipboardList className="w-5 h-5 text-blue-600" />
               Citas Agendadas ({appointments.length})
             </h2>
+
 
             {appointments.length === 0 ? (
               <div className="text-center py-16 bg-white rounded-3xl border-2 border-dashed border-gray-200">
@@ -164,6 +162,7 @@ const Appointments = () => {
               appointments.map((appt) => (
                 <div key={appt.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+
 
                     {/* INFO PRINCIPAL */}
                     <div className="flex-1 space-y-2">
@@ -179,7 +178,9 @@ const Appointments = () => {
                         <span className="text-sm text-gray-500">{appt.formatted_date}</span>
                       </div>
 
+
                       <p className="font-bold text-gray-900 text-lg">{appt.pet_name}</p>
+
 
                       <div className="flex items-center gap-1 text-sm text-gray-600">
                         <Stethoscope className="w-4 h-4" />
@@ -192,32 +193,37 @@ const Appointments = () => {
                         )}
                       </div>
 
+
                       <div className="flex items-center gap-1 text-sm text-gray-500">
                         <MapPin className="w-4 h-4" />
                         <span>{appt.clinic_name}</span>
                       </div>
+
 
                       {appt.reason && (
                         <p className="text-sm text-gray-500 italic">"{appt.reason}"</p>
                       )}
                     </div>
 
+
                     {/* ACCIONES */}
                     <div className="flex flex-col gap-2 min-w-[140px]">
                       {appt.status === 'completed' && appt.vet_id && !appt.has_review && (
                         <button
-                          onClick={() => handleOpenRatingModal(appt.vet_id, appt.id)}
+                          onClick={() => handleOpenRatingModal(appt)} // ✅ FIX: antes (appt.vet_id, appt.id)
                           className="flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-4 rounded-xl text-sm font-medium transition-all"
                         >
                           <Star className="w-4 h-4" /> Calificar
                         </button>
                       )}
 
+
                       {appt.has_review && (
                         <div className="flex items-center justify-center gap-1 text-yellow-500 text-sm font-medium">
                           <Star className="w-4 h-4 fill-current" /> Calificado
                         </div>
                       )}
+
 
                       {appt.status === 'scheduled' && (
                         <button
@@ -229,6 +235,7 @@ const Appointments = () => {
                       )}
                     </div>
 
+
                   </div>
                 </div>
               ))
@@ -237,17 +244,20 @@ const Appointments = () => {
         </main>
       </div>
 
+
       {/* MODAL DE CALIFICACIÓN */}
       {isRatingModalOpen && (
         <RatingModal
           isOpen={isRatingModalOpen}
           onClose={() => setIsRatingModalOpen(false)}
-          onSubmit={handleRatingSubmit}
-          veterinarianId={selectedVeterinarianForRating}
+          veterinarian={selectedVeterinarianForRating}         // ✅ FIX: antes veterinarianId
+          appointmentId={selectedAppointmentId}                // ✅ FIX: antes faltaba
+          onSuccess={() => { setIsRatingModalOpen(false); loadData(); }} // ✅ FIX: antes onSubmit={handleRatingSubmit}
         />
       )}
     </div>
   );
 };
+
 
 export default Appointments;

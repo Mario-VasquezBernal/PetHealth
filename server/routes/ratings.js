@@ -4,12 +4,14 @@ const pool       = require('../db');
 const authorization = require('../middleware/authorization');
 const { body, validationResult } = require('express-validator');
 
+
 // ============================================
 // GET: Calificaciones de un veterinario (público)
 // ============================================
 router.get('/veterinarian/:vetId', async (req, res) => {
   try {
     const { vetId } = req.params;
+
 
     const result = await pool.query(
       `SELECT
@@ -22,6 +24,7 @@ router.get('/veterinarian/:vetId', async (req, res) => {
       [vetId]
     );
 
+
     const stats = await pool.query(
       `SELECT
          COUNT(*)                        AS total,
@@ -33,12 +36,14 @@ router.get('/veterinarian/:vetId', async (req, res) => {
       [vetId]
     );
 
+
     res.json({ ratings: result.rows, statistics: stats.rows[0] });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al obtener calificaciones' });
   }
 });
+
 
 // ============================================
 // GET: Mis reseñas (usuario autenticado)
@@ -62,10 +67,11 @@ router.get('/my-reviews', authorization, async (req, res) => {
   }
 });
 
+
 // ============================================
 // POST: Crear calificación de veterinario
 // ✅ Solo si tuvo consulta real con ese vet
-// ✅ Una sola vez — no se puede editar
+// ✅ Una calificación por cita
 // ============================================
 router.post('/', [
   authorization,
@@ -88,8 +94,10 @@ router.post('/', [
       return res.status(400).json({ error: errors.array()[0].msg });
     }
 
-    const { veterinarian_id, rating, comment } = req.body;
+
+    const { veterinarian_id, appointment_id, rating, comment } = req.body; // ✅ FIX: extraer appointment_id
     const user_id = req.user.id;
+
 
     // 1. Verificar que el veterinario existe
     const vetCheck = await pool.query(
@@ -100,44 +108,45 @@ router.post('/', [
       return res.status(404).json({ error: 'Veterinario no encontrado' });
     }
 
+
     // 2. ✅ Verificar que tuvo una consulta real con este vet
     const vetName = vetCheck.rows[0].name;
-   // ✅ Verificar consulta real con este vet
-const hasConsulted = await pool.query(`
-  SELECT EXISTS (
-    SELECT 1 FROM appointments
-    WHERE user_id = $1
-    AND vet_id = $2
-    AND status = 'completed'
-  ) AS can_rate
-`, [user_id, veterinarian_id]);
-
-if (!hasConsulted.rows[0].can_rate) {
-  return res.status(403).json({
-    error: 'Solo puedes calificar veterinarios con quienes hayas tenido una cita completada.'
-  });
-}
+    const hasConsulted = await pool.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM appointments
+        WHERE user_id = $1
+        AND vet_id = $2
+        AND status = 'completed'
+      ) AS can_rate
+    `, [user_id, veterinarian_id]);
 
 
-    // 3. ✅ Verificar que no haya calificado antes — no se permite editar
-    const existing = await pool.query(
-      'SELECT id FROM veterinarian_ratings WHERE veterinarian_id=$1 AND user_id=$2',
-      [veterinarian_id, user_id]
-    );
-    if (existing.rows.length > 0) {
-      return res.status(409).json({
-        error: 'Ya calificaste a este veterinario. Las reseñas no se pueden editar.'
+    if (!hasConsulted.rows[0].can_rate) {
+      return res.status(403).json({
+        error: 'Solo puedes calificar veterinarios con quienes hayas tenido una cita completada.'
       });
     }
 
-    // 4. Guardar
-   // 4. Guardar (appointment_id siempre NULL — no lo usamos)
-const result = await pool.query(
-  `INSERT INTO veterinarian_ratings 
-     (veterinarian_id, user_id, appointment_id, rating, comment)
-   VALUES ($1, $2, NULL, $3, $4) RETURNING *`,
-  [veterinarian_id, user_id, rating, comment || null]
-);
+
+    // 3. ✅ Verificar que esa cita específica no tenga ya una calificación
+    const existing = await pool.query(
+      'SELECT id FROM veterinarian_ratings WHERE appointment_id = $1', // ✅ FIX: por cita, no por vet+user
+      [appointment_id]
+    );
+    if (existing.rows.length > 0) {
+      return res.status(409).json({
+        error: 'Esta cita ya tiene una calificación.'
+      });
+    }
+
+
+    // 4. ✅ Guardar con appointment_id real
+    const result = await pool.query(
+      `INSERT INTO veterinarian_ratings 
+         (veterinarian_id, user_id, appointment_id, rating, comment)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`, // ✅ FIX: appointment_id real, antes NULL
+      [veterinarian_id, user_id, appointment_id, rating, comment || null]
+    );
 
 
     res.status(201).json({ rating: result.rows[0] });
@@ -146,6 +155,7 @@ const result = await pool.query(
     res.status(500).json({ error: 'Error al crear calificación' });
   }
 });
+
 
 // ============================================
 // PUT: BLOQUEADO — las reseñas no se editan
@@ -156,6 +166,7 @@ router.put('/:id', authorization, (req, res) => {
   });
 });
 
+
 // ============================================
 // DELETE: Eliminar reseña (solo el autor)
 // ============================================
@@ -164,14 +175,17 @@ router.delete('/:id', authorization, async (req, res) => {
     const { id }    = req.params;
     const user_id   = req.user.id;
 
+
     const result = await pool.query(
       'DELETE FROM veterinarian_ratings WHERE id=$1 AND user_id=$2 RETURNING *',
       [id, user_id]
     );
 
+
     if (result.rows.length === 0) {
       return res.status(403).json({ error: 'No autorizado para eliminar esta reseña' });
     }
+
 
     res.json({ message: 'Reseña eliminada' });
   } catch (error) {
@@ -179,5 +193,6 @@ router.delete('/:id', authorization, async (req, res) => {
     res.status(500).json({ error: 'Error al eliminar reseña' });
   }
 });
+
 
 module.exports = router;
