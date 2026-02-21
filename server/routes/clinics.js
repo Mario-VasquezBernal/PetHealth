@@ -7,7 +7,6 @@ const authorization = require('../middleware/authorization');
 // 1. DIRECTORIO Y RANKING (público)
 // ==================================================
 
-// GET: Ranking de clínicas — PÚBLICO, muestra TODAS
 router.get('/directory/ranking', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -32,7 +31,6 @@ router.get('/directory/ranking', async (req, res) => {
 // 2. CRUD DE CLÍNICAS (solo del usuario autenticado)
 // ==================================================
 
-// GET: Clínicas del usuario autenticado (para ManageClinics)
 router.get('/', authorization, async (req, res) => {
   try {
     const result = await pool.query(
@@ -46,7 +44,6 @@ router.get('/', authorization, async (req, res) => {
   }
 });
 
-// POST: Crear clínica — guarda user_id
 router.post('/', authorization, async (req, res) => {
   try {
     const { name, address, city, phone, latitude, longitude } = req.body;
@@ -65,7 +62,6 @@ router.post('/', authorization, async (req, res) => {
   }
 });
 
-// PUT: Actualizar — solo si es del usuario
 router.put('/:id', authorization, async (req, res) => {
   try {
     const { id } = req.params;
@@ -86,7 +82,6 @@ router.put('/:id', authorization, async (req, res) => {
   }
 });
 
-// DELETE: Solo si es del usuario
 router.delete('/:id', authorization, async (req, res) => {
   try {
     const { id } = req.params;
@@ -105,7 +100,7 @@ router.delete('/:id', authorization, async (req, res) => {
 // 3. RESEÑAS DE CLÍNICAS
 // ==================================================
 
-// GET: Ver reseñas de una clínica (público)
+// GET: Todas las reseñas de una clínica
 router.get('/:id/reviews', async (req, res) => {
   try {
     const { id } = req.params;
@@ -122,59 +117,67 @@ router.get('/:id/reviews', async (req, res) => {
   }
 });
 
-// POST: Calificar clínica
-// ✅ Solo si tuvo una consulta en esa clínica
-// ✅ No se puede editar una vez enviada
+// GET: Reseña más reciente del usuario (para pre-cargar el modal)
+// ✅ CAMBIO: ORDER BY created_at DESC LIMIT 1 → siempre la más reciente
+router.get('/:id/my-review', authorization, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `SELECT * FROM clinic_ratings
+       WHERE clinic_id=$1 AND user_id=$2
+       ORDER BY created_at DESC LIMIT 1`,
+      [id, req.user.id]
+    );
+    res.json(result.rows[0] || null);
+  } catch (error) {
+    res.status(500).json({ error: 'Error obteniendo reseña' });
+  }
+});
+
+// POST: Calificar clínica — siempre inserta (mantiene historial completo)
+// ✅ CAMBIO: eliminado el UPDATE — ahora siempre hace INSERT
 router.post('/:id/rate', authorization, async (req, res) => {
   try {
-    const { id }             = req.params;
+    const { id }              = req.params;
     const { rating, comment } = req.body;
 
-    // 1. Verificar que ya calificó antes → bloquear edición
+    // 1. Verificar que la clínica existe
+    const clinicData = await pool.query('SELECT name FROM clinics WHERE id=$1', [id]);
+    if (clinicData.rows.length === 0)
+      return res.status(404).json({ message: 'Clínica no encontrada' });
+
+    // 2. ¿Ya tiene reseñas previas? → no re-verificar cita, solo insertar
     const existing = await pool.query(
       'SELECT id FROM clinic_ratings WHERE clinic_id=$1 AND user_id=$2',
       [id, req.user.id]
     );
-    if (existing.rows.length > 0) {
-      return res.status(403).json({
-        message: 'Ya calificaste esta clínica. Las reseñas no se pueden editar.'
-      });
+
+    if (existing.rows.length === 0) {
+      // Primera reseña → verificar cita completada
+      const hasConsulted = await pool.query(`
+        SELECT EXISTS (
+          SELECT 1 FROM appointments
+          WHERE user_id=$1 AND clinic_id=$2 AND status='completed'
+        ) AS can_rate
+      `, [req.user.id, id]);
+
+      if (!hasConsulted.rows[0].can_rate)
+        return res.status(403).json({
+          message: 'Solo puedes calificar clínicas donde hayas tenido una cita completada.'
+        });
     }
 
-    // 2. Verificar que tuvo una consulta real en esta clínica
-    const clinicData = await pool.query(
-      'SELECT name FROM clinics WHERE id=$1', [id]
-    );
-    if (clinicData.rows.length === 0) {
-      return res.status(404).json({ message: 'Clínica no encontrada' });
-    }
-
-    const clinicName = clinicData.rows[0].name;
-
-  // ✅ Verificar consulta real en esta clínica
-const hasConsulted = await pool.query(`
-  SELECT EXISTS (
-    SELECT 1 FROM appointments
-    WHERE user_id = $1
-    AND clinic_id = $2
-    AND status = 'completed'
-  ) AS can_rate
-`, [req.user.id, id]);
-
-if (!hasConsulted.rows[0].can_rate) {
-  return res.status(403).json({
-    message: 'Solo puedes calificar clínicas donde hayas tenido una cita completada.'
-  });
-}
-
-
-    // 3. Guardar reseña
+    // 3. Siempre insertar → historial
     await pool.query(
       'INSERT INTO clinic_ratings (clinic_id, user_id, rating, comment) VALUES ($1,$2,$3,$4)',
       [id, req.user.id, rating, comment]
     );
 
-    res.json({ message: 'Calificación guardada correctamente' });
+    res.json({
+      message: existing.rows.length > 0
+        ? 'Nueva reseña agregada al historial'
+        : 'Calificación guardada correctamente'
+    });
 
   } catch (error) {
     console.error(error);

@@ -32,7 +32,8 @@ router.get("/", authorization, async (req, res) => {
       LEFT JOIN pets p ON a.pet_id = p.id
       LEFT JOIN veterinarians v ON a.vet_id = v.id 
       LEFT JOIN clinics c ON a.clinic_id = c.id
-      LEFT JOIN veterinarian_ratings r ON r.veterinarian_id = a.vet_id AND r.user_id = a.user_id
+      LEFT JOIN veterinarian_ratings r 
+  ON r.appointment_id = a.id
       WHERE a.user_id = $1 AND a.status != 'cancelled'
       ORDER BY a.date DESC`,
       [req.user.id]

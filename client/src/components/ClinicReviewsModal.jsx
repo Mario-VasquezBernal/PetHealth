@@ -1,28 +1,38 @@
 // ============================================
-// COMPONENTS/VetReviewsModal.JSX
+// COMPONENTS/ClinicReviewsModal.JSX
 // ============================================
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { X, Star, User, Calendar, MessageCircle } from 'lucide-react';
+import { X, Star, User, Calendar, MessageCircle, TrendingUp } from 'lucide-react';
 
-const VetReviewsModal = ({ isOpen, onClose, clinic }) => {
+const StarBar = ({ stars, count, total }) => {
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-gray-500 w-3">{stars}</span>
+      <Star size={11} className="fill-yellow-400 text-yellow-400 flex-shrink-0" />
+      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-full bg-yellow-400 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+      </div>
+      <span className="text-xs text-gray-400 w-5 text-right">{count}</span>
+    </div>
+  );
+};
+
+const ClinicReviewsModal = ({ isOpen, onClose, clinic }) => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // URL Base (Asegúrate de que coincida con tu configuración actual)
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
   useEffect(() => {
-    if (isOpen && clinic) {
-      fetchReviews();
-    }
+    if (isOpen && clinic) fetchReviews();
   }, [isOpen, clinic]);
 
   const fetchReviews = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      // Petición al backend para traer reseñas de esta clínica
       const res = await axios.get(`${API_URL}/clinics/${clinic.id}/reviews`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -36,79 +46,129 @@ const VetReviewsModal = ({ isOpen, onClose, clinic }) => {
 
   if (!isOpen || !clinic) return null;
 
+  // ── Cálculos para el resumen ──
+  const total     = reviews.length;
+  const average   = total > 0 ? (reviews.reduce((sum, r) => sum + r.rating, 0) / total).toFixed(1) : '0.0';
+  const starCounts = [5, 4, 3, 2, 1].map(s => ({
+    stars: s,
+    count: reviews.filter(r => r.rating === s).length
+  }));
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl h-[80vh] flex flex-col overflow-hidden">
-        
-        {/* HEADER */}
-        <div className="bg-white p-5 border-b border-gray-100 flex justify-between items-center sticky top-0 z-10">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl h-[85vh] flex flex-col overflow-hidden">
+
+        {/* ── HEADER ── */}
+        <div className="p-5 border-b border-gray-100 flex justify-between items-start">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Opiniones de Clientes</h2>
-            <p className="text-sm text-gray-500">Clínica: <span className="font-semibold text-blue-600">{clinic.name}</span></p>
+            <h2 className="text-xl font-black text-gray-900">Historial de Reseñas</h2>
+            <p className="text-sm text-gray-400 mt-0.5">
+              <span className="font-semibold text-blue-600">{clinic.name}</span>
+            </p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500">
-            <X size={24} />
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400">
+            <X size={20} />
           </button>
         </div>
 
-        {/* BODY (LISTA DE RESEÑAS) */}
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
-          
+        {/* ── RESUMEN ESTADÍSTICO ── */}
+        {!loading && total > 0 && (
+          <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
+            <div className="flex items-center gap-6">
+
+              {/* Promedio grande */}
+              <div className="text-center flex-shrink-0">
+                <p className="text-5xl font-black text-gray-900 leading-none">{average}</p>
+                <div className="flex justify-center gap-0.5 mt-1.5">
+                  {[1,2,3,4,5].map(s => (
+                    <Star key={s} size={13}
+                      className={s <= Math.round(average) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">{total} {total === 1 ? 'reseña' : 'reseñas'}</p>
+              </div>
+
+              {/* Barras por estrella */}
+              <div className="flex-1 space-y-1.5">
+                {starCounts.map(({ stars, count }) => (
+                  <StarBar key={stars} stars={stars} count={count} total={total} />
+                ))}
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* ── LISTA DE RESEÑAS ── */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-3">
           {loading ? (
             <div className="flex justify-center items-center h-full">
-              <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
             </div>
-          ) : reviews.length > 0 ? (
-            <div className="space-y-4">
-              {reviews.map((review) => (
-                <div key={review.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-                  
-                  {/* Info Usuario y Fecha */}
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
-                        <User size={18} />
-                      </div>
-                      <div>
-                        <p className="font-bold text-gray-900 text-sm">{review.user_name || 'Usuario Anónimo'}</p>
-                        <p className="text-xs text-gray-400 flex items-center gap-1">
-                          <Calendar size={12}/> {new Date(review.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* Estrellas */}
-                    <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg">
-                      <Star size={14} className="fill-yellow-500 text-yellow-500" />
-                      <span className="font-bold text-yellow-700 text-sm">{review.rating}</span>
-                    </div>
-                  </div>
 
-                  {/* Comentario */}
-                  <div className="pl-[52px]">
-                    <p className="text-gray-600 text-sm leading-relaxed bg-gray-50 p-3 rounded-xl rounded-tl-none">
-                      <MessageCircle size={14} className="inline mr-2 text-gray-400 mb-0.5"/>
-                      {review.comment || "Sin comentario escrito."}
+          ) : reviews.length > 0 ? reviews.map((review, index) => (
+            <div key={review.id} className="bg-white border border-gray-100 rounded-2xl p-4 hover:border-gray-200 hover:shadow-sm transition-all">
+              <div className="flex items-start justify-between gap-3">
+
+                {/* Avatar + info */}
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-100 to-indigo-200 flex items-center justify-center flex-shrink-0">
+                    <span className="text-blue-700 font-black text-sm">
+                      {(review.user_name || 'A')[0].toUpperCase()}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900 text-sm leading-none">
+                      {review.user_name || 'Usuario Anónimo'}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                      <Calendar size={11} />
+                      {new Date(review.created_at).toLocaleDateString('es-ES', {
+                        day: '2-digit', month: 'short', year: 'numeric'
+                      })}
                     </p>
                   </div>
-
                 </div>
-              ))}
+
+                {/* Badge estrellas */}
+                <div className="flex items-center gap-1 bg-yellow-50 border border-yellow-100 px-2.5 py-1 rounded-xl flex-shrink-0">
+                  <Star size={13} className="fill-yellow-500 text-yellow-500" />
+                  <span className="font-black text-yellow-700 text-sm">{review.rating}</span>
+                </div>
+              </div>
+
+              {/* Comentario */}
+              {review.comment && (
+                <p className="mt-3 text-sm text-gray-600 leading-relaxed bg-gray-50 rounded-xl px-3 py-2.5 border-l-2 border-blue-200">
+                  "{review.comment}"
+                </p>
+              )}
+
+              {/* Separador entre reseñas — solo si no es el último */}
+              {index < reviews.length - 1 && (
+                <div className="mt-3 border-t border-dashed border-gray-100" />
+              )}
             </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center opacity-60">
-              <MessageCircle size={48} className="text-gray-300 mb-4" />
-              <h3 className="text-lg font-bold text-gray-600">Aún no hay reseñas</h3>
-              <p className="text-sm text-gray-400">Sé el primero en calificar esta clínica.</p>
+
+          )) : (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <div className="bg-gray-100 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <MessageCircle size={28} className="text-gray-300" />
+              </div>
+              <h3 className="font-bold text-gray-700">Aún no hay reseñas</h3>
+              <p className="text-sm text-gray-400 mt-1">Sé el primero en calificar esta clínica.</p>
             </div>
           )}
         </div>
 
-        {/* FOOTER */}
-        <div className="p-4 border-t border-gray-100 bg-white text-right">
-          <button 
+        {/* ── FOOTER ── */}
+        <div className="p-4 border-t border-gray-100 flex items-center justify-between">
+          <p className="text-xs text-gray-400 flex items-center gap-1">
+            <TrendingUp size={13} /> {total} {total === 1 ? 'opinión registrada' : 'opiniones registradas'}
+          </p>
+          <button
             onClick={onClose}
-            className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm transition-colors"
+            className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm transition-colors"
           >
             Cerrar
           </button>
@@ -119,4 +179,4 @@ const VetReviewsModal = ({ isOpen, onClose, clinic }) => {
   );
 };
 
-export default VetReviewsModal;
+export default ClinicReviewsModal;
