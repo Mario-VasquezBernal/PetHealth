@@ -6,19 +6,19 @@ const sendEmail = async (to, subject, htmlContent) => {
   try {
     console.log(`📧 Enviando correo a: ${to} con SendGrid`);
     console.log(`📝 Asunto: ${subject}`);
-    
+
     const msg = {
       to: to,
       from: 'pethealth482@gmail.com',
       subject: subject,
-      html: htmlContent,
+      html: htmlContent,   // ← CLAVE: html no text
     };
 
     const response = await sgMail.send(msg);
-    
+
     console.log(`✅ Correo enviado exitosamente a ${to}`);
     console.log(`📬 Status: ${response[0].statusCode}`);
-    
+
     return { success: true, messageId: response[0].headers['x-message-id'] };
   } catch (error) {
     console.error("❌ Error enviando correo:", error.message);
