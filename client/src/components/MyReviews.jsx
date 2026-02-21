@@ -43,25 +43,7 @@ const MyReviews = () => {
     }
   };
 
-  const handleDelete = async (reviewId) => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar esta reseña?')) return;
 
-    try {
-      // ✅ URL completa
-      await axios.delete(`${API_URL}/ratings/${reviewId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      setReviews(reviews.filter((r) => r.id !== reviewId));
-    } catch (err) {
-      alert(err.response?.data?.error || 'Error al eliminar la reseña');
-    }
-  };
-
-  const handleEditStart = (review) => {
-    setEditingId(review.id);
-    setEditRating(review.rating);
-    setEditComment(review.comment || '');
-  };
 
   const handleEditSave = async (reviewId) => {
     try {
@@ -223,21 +205,7 @@ const MyReviews = () => {
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditStart(review)}
-                        className="px-4 py-2 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 font-medium text-sm flex items-center gap-1.5 transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDelete(review.id)}
-                        className="px-4 py-2 bg-red-100 text-red-700 rounded-xl hover:bg-red-200 font-medium text-sm flex items-center gap-1.5 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Eliminar
-                      </button>
-                    </div>
+                                          </div>
                   </div>
                 </div>
               )}

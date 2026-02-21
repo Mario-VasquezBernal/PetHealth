@@ -215,6 +215,61 @@ router.put("/finish/:id", authorization, async (req, res) => {
     res.status(500).json({ error: "Error al finalizar la cita" });
   }
 });
+// ==========================================
+// 5. FINALIZAR CITA VIA QR (sin auth — veterinario)
+// ==========================================
+router.put("/complete-qr/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { requires_review, next_review_date } = req.body;
+
+    if (requires_review === true && !next_review_date) {
+      return res.status(400).json({
+        error: "Debe indicar la fecha de la próxima revisión"
+      });
+    }
+
+    // Verificar que la cita existe y no está cancelada
+    const check = await pool.query(
+      `SELECT id, status FROM appointments WHERE id = $1`,
+      [id]
+    );
+
+    if (check.rows.length === 0) {
+      return res.status(404).json({ error: "Cita no encontrada" });
+    }
+
+    if (check.rows[0].status === 'cancelled') {
+      return res.status(400).json({ error: "Esta cita fue cancelada" });
+    }
+
+    if (check.rows[0].status === 'completed') {
+      return res.status(400).json({ error: "Esta cita ya fue completada" });
+    }
+
+    const updated = await pool.query(
+      `UPDATE appointments
+       SET
+         requires_review  = $1,
+         next_review_date = $2,
+         status           = 'completed',
+         reminder_sent    = true
+       WHERE id = $3
+       RETURNING *`,
+      [requires_review ?? false, next_review_date || null, id]
+    );
+
+    res.json({ 
+      message: 'Consulta registrada correctamente',
+      appointment: updated.rows[0] 
+    });
+
+  } catch (err) {
+    console.error("Error al completar cita via QR:", err.message);
+    res.status(500).json({ error: "Error al completar la cita" });
+  }
+});
+
 
 
 module.exports = router;

@@ -1,11 +1,11 @@
 // ============================================
-// COMPONENTS/CLINICREVIEWSMODAL.JSX
+// COMPONENTS/VetReviewsModal.JSX
 // ============================================
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { X, Star, User, Calendar, MessageCircle } from 'lucide-react';
 
-const ClinicReviewsModal = ({ isOpen, onClose, clinic }) => {
+const VetReviewsModal = ({ isOpen, onClose, clinic }) => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -119,4 +119,4 @@ const ClinicReviewsModal = ({ isOpen, onClose, clinic }) => {
   );
 };
 
-export default ClinicReviewsModal;
+export default VetReviewsModal;

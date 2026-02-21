@@ -11,7 +11,7 @@ import { Search, MapPin, Building2, Stethoscope, Star } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import MobileHeader from '../components/MobileHeader';
 import { getUserProfile } from '../dataManager';
-import ClinicReviewsModal from '../components/ClinicReviewsModal';
+import VetReviewsModal from '../components/VetReviewsModal';
 
 const VetDirectory = () => {
   const [user, setUser] = useState(null);
@@ -25,7 +25,7 @@ const VetDirectory = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   // ✅ NUEVO — estado del modal
-  const [selectedClinic, setSelectedClinic] = useState(null);
+  const [selectedVet, setSelectedVet] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -74,9 +74,10 @@ const VetDirectory = () => {
 
   // ✅ NUEVO — función abrir modal
   const openReviews = (vet) => {
-    setSelectedClinic(vet);
-    setModalOpen(true);
-  };
+  console.log("🔥 Abriendo modal para:", vet);
+  setSelectedVet(vet);
+  setModalOpen(true);
+};
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -186,10 +187,10 @@ const VetDirectory = () => {
       </div>
 
       {/* ✅ NUEVO — Modal de opiniones */}
-      <ClinicReviewsModal
+      <VetReviewsModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        clinic={selectedClinic}
+        vet={selectedVet}
       />
     </div>
   );

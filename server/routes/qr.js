@@ -194,6 +194,64 @@ router.get("/validate/:token", async (req, res) => {
     return res.status(500).json({ error: "Error al validar token" });
   }
 });
+// ========================================
+// 4. COMPLETAR CITA VIA QR (sin auth — lo hace el vet)
+// ========================================
+router.put("/complete/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    // Buscar el qr_token y obtener pet_id + vet_id
+    const qrData = await pool.query(
+      `SELECT qt.pet_id, qt.vet_id
+       FROM qr_tokens qt
+       WHERE qt.token = $1 AND qt.expires_at > NOW()`,
+      [token]
+    );
+
+    if (qrData.rows.length === 0) {
+      return res.status(404).json({ error: "Token inválido o expirado" });
+    }
+
+    const { pet_id, vet_id } = qrData.rows[0];
+
+    // Buscar la cita pendiente más reciente de ese pet + vet
+    const appointment = await pool.query(
+      `SELECT id FROM appointments
+       WHERE pet_id = $1 AND vet_id = $2
+         AND status IN ('scheduled', 'pending')
+       ORDER BY date DESC
+       LIMIT 1`,
+      [pet_id, vet_id]
+    );
+
+    if (appointment.rows.length === 0) {
+      // No hay cita formal — igual permitir calificación creando registro
+      return res.json({ 
+        message: 'Sin cita formal registrada, el registro médico fue guardado',
+        appointment_id: null 
+      });
+    }
+
+    // Marcar como completada
+    const updated = await pool.query(
+      `UPDATE appointments
+       SET status = 'completed', reminder_sent = true
+       WHERE id = $1
+       RETURNING id`,
+      [appointment.rows[0].id]
+    );
+
+    res.json({ 
+      message: 'Cita completada correctamente',
+      appointment_id: updated.rows[0].id 
+    });
+
+  } catch (err) {
+    console.error("Error al completar cita via QR:", err.message);
+    res.status(500).json({ error: "Error al completar la cita" });
+  }
+});
 
 
 module.exports = router;

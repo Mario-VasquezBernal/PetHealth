@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom'; // ✅ CAMBIO: agregar useSearchParams
+import { useParams, useSearchParams } from 'react-router-dom';
 import { validateQRToken, createMedicalRecord } from '../dataManager';
 import { toast } from 'react-toastify';
+import axios from 'axios';
 import { 
   Stethoscope, Weight, User, Building2, Clock,
   AlertCircle, CheckCircle, Loader, Thermometer, Heart
@@ -9,7 +10,7 @@ import {
 
 const VetQRAccess = () => {
   const { token }              = useParams();
-  const [searchParams]         = useSearchParams(); // ✅ CAMBIO: leer parámetros del QR
+  const [searchParams]         = useSearchParams();
 
   const [loading, setLoading]       = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -23,15 +24,15 @@ const VetQRAccess = () => {
     diagnosis:            '',
     treatment:            '',
     notes:                '',
-    recorded_weight:      '',   // ✅ CAMBIO: era 'measured_weight' → ahora coincide con el backend
+    recorded_weight:      '',
     vet_id:               '',
     clinic_id:            '',
     visit_reason:         '',
     examination_findings: '',
-    next_visit:           '',   // ✅ CAMBIO: era 'follow_up_date' → ahora coincide con el backend
-    visit_type:           'Consulta General', // ✅ CAMBIO: valor en español para que coincida con el badge
-    temperature:          '',   // ✅ CAMBIO: campo nuevo (signos vitales)
-    heart_rate:           '',   // ✅ CAMBIO: campo nuevo (signos vitales)
+    next_visit:           '',
+    visit_type:           'Consulta General',
+    temperature:          '',
+    heart_rate:           '',
   });
 
   useEffect(() => {
@@ -44,8 +45,6 @@ const VetQRAccess = () => {
       setPetData(data.pet);
       setTokenValid(true);
 
-      // ✅ CAMBIO: Si validateQRToken devuelve assignedVet/assignedClinic úsalos,
-      // si no, construirlos desde los query params del QR (vet_id, vet_name, clinic_id, clinic_name)
       const vet = data.assignedVet || {
         id:   searchParams.get('vet_id'),
         name: searchParams.get('vet_name'),
@@ -85,30 +84,28 @@ const VetQRAccess = () => {
     try {
       setSubmitting(true);
 
-      // ✅ CAMBIO: payload alineado con lo que espera public.routes.js
+      // 1. Guardar registro médico
       await createMedicalRecord({
-        token,                                    // para resolver pet_id en el backend
-        clinic_id:       formData.clinic_id,
-        clinic_name:     assignedClinic?.name || '',
-        veterinarian_name: assignedVet?.name  || '',
-        diagnosis:       formData.diagnosis,
-        treatment:       formData.treatment,
-        notes:           formData.notes,
-        recorded_weight: formData.recorded_weight // ✅ CAMBIO: nombre correcto para el backend
-          ? parseFloat(formData.recorded_weight)
-          : null,
-        next_visit:      formData.next_visit || null, // ✅ CAMBIO: nombre correcto para el backend
-        visit_type:      formData.visit_type,
-        temperature:     formData.temperature     // ✅ CAMBIO: signos vitales
-          ? parseFloat(formData.temperature)
-          : null,
-        heart_rate:      formData.heart_rate      // ✅ CAMBIO: signos vitales
-          ? parseInt(formData.heart_rate)
-          : null,
+        token,
+        clinic_id:            formData.clinic_id,
+        clinic_name:          assignedClinic?.name || '',
+        veterinarian_name:    assignedVet?.name  || '',
+        diagnosis:            formData.diagnosis,
+        treatment:            formData.treatment,
+        notes:                formData.notes,
+        recorded_weight:      formData.recorded_weight ? parseFloat(formData.recorded_weight) : null,
+        next_visit:           formData.next_visit || null,
+        visit_type:           formData.visit_type,
+        temperature:          formData.temperature ? parseFloat(formData.temperature) : null,
+        heart_rate:           formData.heart_rate ? parseInt(formData.heart_rate) : null,
         examination_findings: formData.examination_findings,
       });
 
-      toast.success('✅ Registro médico guardado exitosamente');
+      // ✅ 2. Marcar la cita como completada → habilita calificación
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      await axios.put(`${API_URL}/qr/complete/${token}`);
+
+      toast.success('✅ Registro guardado. El paciente ya puede calificar la consulta.');
 
       // Reset
       setFormData({
@@ -230,9 +227,7 @@ const VetQRAccess = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Motivo de la Consulta</label>
-                <input
-                  type="text"
-                  placeholder="Ej: Chequeo anual, Vacunación, Emergencia..."
+                <input type="text" placeholder="Ej: Chequeo anual, Vacunación, Emergencia..."
                   value={formData.visit_reason}
                   onChange={(e) => setFormData({...formData, visit_reason: e.target.value})}
                   className="w-full border-2 border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
@@ -240,9 +235,7 @@ const VetQRAccess = () => {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo de Visita</label>
-                {/* ✅ CAMBIO: valores en español para que coincidan con el badge del historial */}
-                <select
-                  value={formData.visit_type}
+                <select value={formData.visit_type}
                   onChange={(e) => setFormData({...formData, visit_type: e.target.value})}
                   className="w-full border-2 border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 >
@@ -285,14 +278,13 @@ const VetQRAccess = () => {
               />
             </div>
 
-            {/* ✅ CAMBIO: Signos vitales como campos individuales */}
+            {/* SIGNOS VITALES */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                   <Thermometer className="w-4 h-4 text-orange-500" /> Temperatura (°C)
                 </label>
-                <input
-                  type="number" step="0.1" placeholder="Ej: 38.5"
+                <input type="number" step="0.1" placeholder="Ej: 38.5"
                   value={formData.temperature}
                   onChange={(e) => setFormData({...formData, temperature: e.target.value})}
                   className="w-full border-2 border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-orange-400 focus:border-orange-400 outline-none"
@@ -302,8 +294,7 @@ const VetQRAccess = () => {
                 <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                   <Heart className="w-4 h-4 text-red-500" /> Frecuencia Cardíaca (bpm)
                 </label>
-                <input
-                  type="number" placeholder="Ej: 90"
+                <input type="number" placeholder="Ej: 90"
                   value={formData.heart_rate}
                   onChange={(e) => setFormData({...formData, heart_rate: e.target.value})}
                   className="w-full border-2 border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-red-400 focus:border-red-400 outline-none"
@@ -317,9 +308,8 @@ const VetQRAccess = () => {
                 <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                   <Weight className="w-4 h-4" /> Peso medido (kg)
                 </label>
-                <input
-                  type="number" step="0.1" placeholder="Ej: 15.5"
-                  value={formData.recorded_weight}  // ✅ CAMBIO: nombre correcto
+                <input type="number" step="0.1" placeholder="Ej: 15.5"
+                  value={formData.recorded_weight}
                   onChange={(e) => setFormData({...formData, recorded_weight: e.target.value})}
                   className="w-full border-2 border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 />
@@ -329,9 +319,8 @@ const VetQRAccess = () => {
                 <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                   <Clock className="w-4 h-4" /> Próxima Revisión
                 </label>
-                <input
-                  type="date"
-                  value={formData.next_visit}       // ✅ CAMBIO: nombre correcto
+                <input type="date"
+                  value={formData.next_visit}
                   onChange={(e) => setFormData({...formData, next_visit: e.target.value})}
                   className="w-full border-2 border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 />
@@ -349,8 +338,7 @@ const VetQRAccess = () => {
             </div>
 
             {/* BOTÓN SUBMIT */}
-            <button
-              type="submit" disabled={submitting}
+            <button type="submit" disabled={submitting}
               className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold py-4 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
             >
               {submitting ? (

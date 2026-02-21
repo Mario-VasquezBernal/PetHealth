@@ -8,7 +8,7 @@ import Sidebar from '../components/Sidebar';
 import MobileHeader from '../components/MobileHeader';
 import { getUserProfile } from '../dataManager';
 import ClinicRatingModal from '../components/ClinicRatingModal'; // Modal para Calificar
-import ClinicReviewsModal from '../components/ClinicReviewsModal'; // Modal para Ver Detalles (NUEVO)
+import VetReviewsModal from '../components/VetReviewsModal'; // Modal para Ver Detalles (NUEVO)
 
 const ClinicDirectory = () => {
   const [user, setUser] = useState(null);
@@ -171,7 +171,7 @@ const ClinicDirectory = () => {
           />
 
           {/* 2. MODAL PARA VER COMENTARIOS (NUEVO) */}
-          <ClinicReviewsModal
+          <VetReviewsModal
             isOpen={isDetailsOpen}
             onClose={() => setIsDetailsOpen(false)}
             clinic={detailsClinic}
