@@ -93,8 +93,8 @@ function appointmentTemplate({ name, petName, date, reason, calendarLink, vetNam
             <td style="background-color:#f8fafc; padding:20px 30px; text-align:center; border-top:1px solid #e2e8f0;">
               <p style="margin:0 0 6px 0; font-size:12px; color:#94a3b8;">Este es un mensaje automático, por favor no respondas a este correo.</p>
               <p style="margin:0; font-size:12px; color:#94a3b8;">
-                ¿Tienes dudas? Ingresa a
-                <a href="https://pet-health-kappa.vercel.app" style="color:#16a34a; text-decoration:none; font-weight:bold;">pet-health-kappa.vercel.app</a>
+                ¿Tienes dudas? Contáctanos en
+                <a href="mailto:mxvasquez@sudamericano.edu.ec" style="color:#16a34a; text-decoration:none; font-weight:bold;">mxvasquez@sudamericano.edu.ec</a>
               </p>
             </td>
           </tr>
