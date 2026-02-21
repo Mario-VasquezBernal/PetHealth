@@ -2,7 +2,7 @@ const sgMail = require('@sendgrid/mail');
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-const sendEmail = async (to, subject, text) => {
+const sendEmail = async (to, subject, htmlContent) => {
   try {
     console.log(`📧 Enviando correo a: ${to} con SendGrid`);
     console.log(`📝 Asunto: ${subject}`);
@@ -11,7 +11,7 @@ const sendEmail = async (to, subject, text) => {
       to: to,
       from: 'pethealth482@gmail.com',
       subject: subject,
-      text: text,
+      html: htmlContent,
     };
 
     const response = await sgMail.send(msg);
