@@ -6,34 +6,34 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import 'leaflet/dist/leaflet.css';
 
-// Componentes de Estructura y Seguridad
 import ProtectedRoute from './components/ProtectedRoute';
 
-// 1. Páginas de Autenticación
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
 
-// 2. Páginas del Dashboard (Protegidas)
 import Home from './pages/Home';
 import Profile from './pages/Profile';
 import Appointments from './pages/Appointments';
 import MedicalRecords from './pages/MedicalRecords';
 import MyReviewsPage from './pages/MyReviewsPage';
 
-// 3. Gestión de Mascotas
 import PetDetails from './pages/PetDetails';
 import EditPet from './pages/EditPet';
 
-// 4. Directorios y Gestión
 import ManageClinics from './pages/ManageClinics';
 import ManageVeterinarians from './pages/ManageVeterinarians';
-import VetDirectory from './pages/VetDirectory';     // Directorio Doctores
-import ClinicDirectory from './pages/ClinicDirectory'; // <--- NUEVO: Directorio Clínicas
+import VetDirectory from './pages/VetDirectory';
+import ClinicDirectory from './pages/ClinicDirectory';
 
-// 5. Páginas de Acceso Externo (QR)
 import PublicMedicalHistory from './pages/PublicMedicalHistory';
 import VetAccessPanel from './pages/VetAccessPanel';
+
+// ✅ Redirige según si hay sesión activa o no
+const RootRedirect = () => {
+  const token = localStorage.getItem('token');
+  return <Navigate to={token ? '/home' : '/login'} replace />;
+};
 
 function App() {
   return (
@@ -41,7 +41,10 @@ function App() {
       <ToastContainer position="top-right" autoClose={3000} theme="colored" />
 
       <Routes>
-        
+
+        {/* ✅ Ruta raíz FUERA del ProtectedRoute — decide sola */}
+        <Route path="/" element={<RootRedirect />} />
+
         {/* BLOQUE 1: RUTAS EXTERNAS (QR) */}
         <Route path="/medical-history/:id" element={<PublicMedicalHistory />} />
         <Route path="/qr/:token" element={<VetAccessPanel />} />
@@ -53,8 +56,6 @@ function App() {
 
         {/* BLOQUE 3: RUTAS PROTEGIDAS (DASHBOARD) */}
         <Route element={<ProtectedRoute />}>
-          
-          <Route path="/" element={<Navigate to="/home" replace />} />
 
           {/* Principal */}
           <Route path="/home" element={<Home />} />
@@ -62,7 +63,7 @@ function App() {
 
           {/* Directorios Públicos */}
           <Route path="/directory" element={<VetDirectory />} />
-          <Route path="/clinics-directory" element={<ClinicDirectory />} /> {/* <--- NUEVA RUTA */}
+          <Route path="/clinics-directory" element={<ClinicDirectory />} />
 
           {/* Mascotas */}
           <Route path="/pets/:id" element={<PetDetails />} />

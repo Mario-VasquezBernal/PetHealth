@@ -321,7 +321,7 @@ function predictHealth(pet, lifestyle, weightHistory = [], vaccinations = [], me
     },
 
     // Markov real con distribución probabilística
-    markov_projection: markovResult,
+    markovprojection: markovResult,
 
     // Síntomas crónicos
     symptomPatterns,

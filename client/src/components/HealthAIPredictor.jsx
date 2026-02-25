@@ -159,7 +159,7 @@ const HealthAIPredictor = ({ petId, pet }) => {
     <div className="bg-white rounded-card shadow-card border border-primary-100 p-6 space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <span className="text-2xl">🤖</span>
+        <span className="text-2xl"></span>
         <div>
           <h3 className="text-xl font-bold text-primary-900">
             Predicción IA de Salud — {speciesProfile.label}
@@ -226,7 +226,10 @@ const HealthAIPredictor = ({ petId, pet }) => {
                 <Clock className="w-5 h-5" />
                 <span className="font-bold text-lg">Score de Urgencia</span>
               </div>
-              <span className="text-3xl font-bold">{result.consultUrgency?.score}/100</span>
+              <span className="text-2xl sm:text-3xl lg:text-4xl font-bold">
+  {result.consultUrgency?.score}
+  <span className="text-base sm:text-lg font-medium opacity-75">/100</span>
+</span>
             </div>
             <p className="text-sm mt-1 opacity-90">{result.consultUrgency?.message}</p>
             {result.consultUrgency?.daysToVisit && (
@@ -374,41 +377,67 @@ const HealthAIPredictor = ({ petId, pet }) => {
               )}
             </div>
           )}
+{/* Tab: Proyección Markov */}
+{activeTab === 'markov' && (
+  <div className="space-y-3">
+    {result.markovprojection?.projection?.length ? (
+      <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <LineChart className="w-4 h-4 text-indigo-700" />
+          <p className="font-semibold text-indigo-900 text-sm">
+            Proyección de estados de salud (Markov)
+          </p>
+        </div>
+        <p className="text-[11px] text-indigo-800 mb-3">
+          Estados simulados a {result.markovprojection.projection.length} años,
+          usando cadenas de Markov discretas con la historia clínica registrada.
+        </p>
 
-          {/* Tab: Proyección Markov */}
-          {activeTab === 'markov' && (
-            <div className="space-y-3">
-              {result.markovProjection?.states?.length ? (
-                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <LineChart className="w-4 h-4 text-indigo-700" />
-                    <p className="font-semibold text-indigo-900 text-sm">
-                      Proyección de estados de salud (Markov)
-                    </p>
+        {result.markovprojection.projection.map((yearData, i) => {
+
+          // ✅ Traducciones al español
+          const stateLabels = {
+            healthy:    'Saludable',
+            overweight: 'Sobrepeso',
+            sick:       'Enfermo'
+          };
+
+          return (
+            <div key={i} className="mb-3">
+              <p className="text-xs font-bold text-indigo-800 mb-1">
+                Año {yearData.year} — Estado dominante:{' '}
+                <span>{stateLabels[yearData.dominantState] || yearData.dominantState}</span>
+              </p>
+              <div className="space-y-1">
+                {Object.entries(yearData.distribution).map(([state, prob]) => (
+                  <div key={state} className="flex items-center gap-2 text-[11px] text-indigo-900">
+                    <span className="w-20">{stateLabels[state] || state}</span>
+                    <div className="flex-1 bg-indigo-100 rounded-full h-2">
+                      <div
+                        className="bg-indigo-500 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.round(prob * 100)}%` }}
+                      />
+                    </div>
+                    <span className="w-8 text-right font-semibold">
+                      {Math.round(prob * 100)}%
+                    </span>
                   </div>
-                  <p className="text-[11px] text-indigo-800 mb-3">
-                    Estados simulados a 24 meses, usando cadenas de Markov discretas con la
-                    historia clínica registrada.
-                  </p>
-                  <ul className="space-y-1">
-                    {result.markovProjection.states.map((s, i) => (
-                      <li
-                        key={i}
-                        className="flex items-center justify-between text-[11px] text-indigo-900"
-                      >
-                        <span className="capitalize">{s.label}</span>
-                        <span className="font-semibold">{Math.round(s.probability * 100)}%</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <p className="text-xs text-gray-500">
-                  No hay suficientes datos para una proyección Markov fiable.
-                </p>
-              )}
+                ))}
+              </div>
             </div>
-          )}
+          );
+        })}
+      </div>
+    ) : (
+      <p className="text-xs text-gray-500">
+        No hay suficientes datos para una proyección Markov fiable.
+      </p>
+    )}
+  </div>
+)}
+
+  
+
 
           {/* Tab: Vacunas */}
           {activeTab === 'vaccines' && (

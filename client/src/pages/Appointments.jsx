@@ -8,13 +8,11 @@ import {
   ClipboardList, RefreshCw, Clock, PawPrint
 } from 'lucide-react';
 
-// Componentes
 import Sidebar from '../components/Sidebar';
 import MobileHeader from '../components/MobileHeader';
 import AppointmentForm from "../components/AppointmentForm";
 import RatingModal from '../components/RatingModal';
 
-// Data
 import { getAppointments, deleteAppointment, getUserProfile } from '../dataManager';
 
 const STATUS_CONFIG = {
@@ -105,63 +103,60 @@ const Appointments = () => {
     setIsRatingModalOpen(true);
   };
 
-  // Contadores para las stats
-  const completedCount  = appointments.filter(a => a.status === 'completed').length;
-  const scheduledCount  = appointments.filter(a => a.status === 'scheduled').length;
-  const pendingReviews  = appointments.filter(a => a.status === 'completed' && !a.has_review).length;
+  const completedCount = appointments.filter(a => a.status === 'completed').length;
+  const scheduledCount = appointments.filter(a => a.status === 'scheduled').length;
+  const pendingReviews = appointments.filter(a => a.status === 'completed' && !a.has_review).length;
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar user={user} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} onNewPet={null} />
 
-      <div className="flex-1 lg:ml-72">
+      <div className="flex-1 lg:ml-72 min-w-0"> {/* ✅ min-w-0 evita desbordamiento */}
         <MobileHeader onMenuClick={() => setSidebarOpen(true)} onNewPet={null} />
 
-        <main className="px-4 lg:px-8 py-8 max-w-5xl mx-auto space-y-8">
+        <main className="px-4 lg:px-8 py-6 max-w-5xl mx-auto space-y-6">
 
           {/* ── HEADER ── */}
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-black text-gray-900 tracking-tight">Mis Citas</h1>
-              <p className="text-gray-400 mt-1 text-sm">Gestiona tus citas veterinarias</p>
-            </div>
-            
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">Mis Citas</h1>
+            <p className="text-gray-400 mt-1 text-sm">Gestiona tus citas veterinarias</p>
           </div>
 
           {/* ── STATS RÁPIDAS ── */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
-              <div className="bg-blue-50 p-2.5 rounded-xl">
-                <Calendar className="w-5 h-5 text-blue-500" />
+          {/* ✅ grid-cols-3 con texto truncado para móvil */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+              <div className="bg-blue-50 p-2 sm:p-2.5 rounded-xl flex-shrink-0">
+                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
               </div>
-              <div>
-                <p className="text-2xl font-black text-gray-900">{scheduledCount}</p>
-                <p className="text-xs text-gray-400 font-medium">Agendadas</p>
-              </div>
-            </div>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
-              <div className="bg-emerald-50 p-2.5 rounded-xl">
-                <ClipboardList className="w-5 h-5 text-emerald-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-black text-gray-900">{completedCount}</p>
-                <p className="text-xs text-gray-400 font-medium">Completadas</p>
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-black text-gray-900">{scheduledCount}</p>
+                <p className="text-[10px] sm:text-xs text-gray-400 font-medium truncate">Agendadas</p>
               </div>
             </div>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
-              <div className="bg-yellow-50 p-2.5 rounded-xl">
-                <Star className="w-5 h-5 text-yellow-500" />
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+              <div className="bg-emerald-50 p-2 sm:p-2.5 rounded-xl flex-shrink-0">
+                <ClipboardList className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
               </div>
-              <div>
-                <p className="text-2xl font-black text-gray-900">{pendingReviews}</p>
-                <p className="text-xs text-gray-400 font-medium">Sin calificar</p>
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-black text-gray-900">{completedCount}</p>
+                <p className="text-[10px] sm:text-xs text-gray-400 font-medium truncate">Completadas</p>
+              </div>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+              <div className="bg-yellow-50 p-2 sm:p-2.5 rounded-xl flex-shrink-0">
+                <Star className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-black text-gray-900">{pendingReviews}</p>
+                <p className="text-[10px] sm:text-xs text-gray-400 font-medium truncate">Sin calificar</p>
               </div>
             </div>
           </div>
 
           {/* ── FORMULARIO NUEVA CITA ── */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-5 flex items-center gap-2">
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-4 sm:p-6">
+            <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-4 sm:mb-5 flex items-center gap-2">
               <div className="bg-blue-50 p-1.5 rounded-lg">
                 <Stethoscope className="w-4 h-4 text-blue-600" />
               </div>
@@ -173,7 +168,7 @@ const Appointments = () => {
           {/* ── LISTA DE CITAS ── */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
                 <div className="bg-blue-50 p-1.5 rounded-lg">
                   <ClipboardList className="w-4 h-4 text-blue-600" />
                 </div>
@@ -184,7 +179,6 @@ const Appointments = () => {
               </span>
             </div>
 
-            {/* Estado de carga */}
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-gray-100">
                 <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
@@ -204,18 +198,17 @@ const Appointments = () => {
                 return (
                   <div
                     key={appt.id}
-                    className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 transition-all duration-200 p-5"
+                    className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 transition-all duration-200 p-4 sm:p-5"
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
 
                       {/* INFO */}
-                      <div className="flex gap-4 flex-1">
-                        {/* Avatar mascota */}
-                        <div className="bg-blue-50 rounded-2xl w-12 h-12 flex-shrink-0 flex items-center justify-center">
-                          <PawPrint className="w-6 h-6 text-blue-400" />
+                      <div className="flex gap-3 flex-1 min-w-0"> {/* ✅ min-w-0 */}
+                        <div className="bg-blue-50 rounded-2xl w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 flex items-center justify-center">
+                          <PawPrint className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />
                         </div>
 
-                        <div className="space-y-1.5 flex-1">
+                        <div className="space-y-1 flex-1 min-w-0"> {/* ✅ min-w-0 */}
                           {/* Badge status + fecha */}
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${statusCfg.className}`}>
@@ -223,20 +216,23 @@ const Appointments = () => {
                               {statusCfg.label}
                             </span>
                             <span className="flex items-center gap-1 text-xs text-gray-400">
-                              <Clock className="w-3 h-3" />
-                              {appt.formatted_date}
+                              <Clock className="w-3 h-3 flex-shrink-0" />
+                              {/* ✅ truncate evita desbordamiento en móvil */}
+                              <span className="truncate max-w-[160px] sm:max-w-none">
+                                {appt.formatted_date}
+                              </span>
                             </span>
                           </div>
 
                           {/* Nombre mascota */}
-                          <p className="font-bold text-gray-900 capitalize">{appt.pet_name}</p>
+                          <p className="font-bold text-gray-900 capitalize truncate">{appt.pet_name}</p>
 
                           {/* Veterinario */}
-                          <div className="flex items-center gap-1.5 text-sm text-gray-500">
-                            <Stethoscope className="w-3.5 h-3.5 text-gray-400" />
-                            <span>{appt.vet_name}</span>
+                          <div className="flex items-center gap-1.5 text-sm text-gray-500 min-w-0">
+                            <Stethoscope className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                            <span className="truncate">{appt.vet_name}</span>
                             {appt.average_rating && (
-                              <span className="flex items-center gap-0.5 ml-1 text-yellow-500 font-semibold text-xs">
+                              <span className="flex items-center gap-0.5 ml-1 text-yellow-500 font-semibold text-xs flex-shrink-0">
                                 <Star className="w-3 h-3 fill-current" />
                                 {parseFloat(appt.average_rating).toFixed(1)}
                               </span>
@@ -244,14 +240,14 @@ const Appointments = () => {
                           </div>
 
                           {/* Clínica */}
-                          <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                            <MapPin className="w-3.5 h-3.5" />
-                            <span>{appt.clinic_name}</span>
+                          <div className="flex items-center gap-1.5 text-xs text-gray-400 min-w-0">
+                            <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span className="truncate">{appt.clinic_name}</span>
                           </div>
 
                           {/* Motivo */}
                           {appt.reason && (
-                            <p className="text-xs text-gray-400 italic bg-gray-50 px-3 py-1.5 rounded-lg w-fit">
+                            <p className="text-xs text-gray-400 italic bg-gray-50 px-3 py-1.5 rounded-lg truncate max-w-xs sm:max-w-none">
                               "{appt.reason}"
                             </p>
                           )}
@@ -263,14 +259,14 @@ const Appointments = () => {
                         {appt.status === 'completed' && appt.vet_id && !appt.has_review && (
                           <button
                             onClick={() => handleOpenRatingModal(appt)}
-                            className="flex items-center justify-center gap-1.5 bg-yellow-500 hover:bg-yellow-600 active:scale-95 text-white py-2 px-4 rounded-xl text-sm font-semibold transition-all shadow-sm shadow-yellow-200"
+                            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-yellow-500 hover:bg-yellow-600 active:scale-95 text-white py-2 px-3 sm:px-4 rounded-xl text-sm font-semibold transition-all shadow-sm shadow-yellow-200"
                           >
                             <Star className="w-3.5 h-3.5" /> Calificar
                           </button>
                         )}
 
                         {appt.has_review && (
-                          <div className="flex items-center justify-center gap-1.5 bg-yellow-50 text-yellow-600 border border-yellow-200 py-2 px-4 rounded-xl text-sm font-semibold">
+                          <div className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-yellow-50 text-yellow-600 border border-yellow-200 py-2 px-3 sm:px-4 rounded-xl text-sm font-semibold">
                             <Star className="w-3.5 h-3.5 fill-current" /> Calificado
                           </div>
                         )}
@@ -278,7 +274,7 @@ const Appointments = () => {
                         {appt.status === 'scheduled' && (
                           <button
                             onClick={() => handleDeleteAppointment(appt.id)}
-                            className="flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 active:scale-95 text-red-500 py-2 px-4 rounded-xl text-sm font-semibold border border-red-100 transition-all"
+                            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 active:scale-95 text-red-500 py-2 px-3 sm:px-4 rounded-xl text-sm font-semibold border border-red-100 transition-all"
                           >
                             <Trash2 className="w-3.5 h-3.5" /> Cancelar
                           </button>
