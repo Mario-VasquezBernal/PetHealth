@@ -42,15 +42,7 @@ const MyReviewsPage = () => {
           onNewPet={null} 
         />
 
-        {/* Header Desktop */}
-        <div className="hidden lg:block bg-white border-b border-gray-100">
-          <div className="px-8 py-5 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-gray-900" strokeWidth={2} />
-              <span className="text-sm font-medium text-gray-900">Cuenca, Ecuador</span>
-            </div>
-          </div>
-        </div>
+        
 
         {/* Contenido principal */}
         <main className="px-4 lg:px-8 py-8">

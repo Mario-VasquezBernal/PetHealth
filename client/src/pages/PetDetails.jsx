@@ -189,7 +189,7 @@ const PetDetails = () => {
           <div className="px-8 py-5 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <MapPin className="w-5 h-5 text-gray-900" strokeWidth={2} />
-              <span className="text-sm font-medium text-gray-900">Cuenca, Ecuador</span>
+              <span className="text-sm font-medium text-gray-900"></span>
             </div>
           </div>
         </div>

@@ -341,7 +341,9 @@ router.put("/pets/:id", authorization, async (req, res) => {
 
     const {
       name,
-      species_code,
+      species_code,   // ← si viene como species_code
+      species,        // ← si viene como species
+      type,           // ← si viene como type
       breed,
       birth_date,
       gender,
@@ -350,6 +352,20 @@ router.put("/pets/:id", authorization, async (req, res) => {
       allergies,
       is_sterilized
     } = req.body;
+// ✅ Mapeo completo con tus códigos reales
+const speciesMap = {
+  "perro": "dog",
+  "gato": "cat",
+  "ave": "bird",
+  "otro": "other",
+  "dog": "dog",
+  "cat": "cat",
+  "bird": "bird",
+  "other": "other"
+};
+const rawSpecies = (species_code || species || type || "").toLowerCase().trim();
+const resolvedSpeciesCode = speciesMap[rawSpecies] || rawSpecies;
+const resolvedWeight = weight ? parseFloat(weight) : null;
 
     const updatePet = await pool.query(
       `
@@ -369,17 +385,17 @@ router.put("/pets/:id", authorization, async (req, res) => {
       RETURNING *
       `,
       [
-        name,
-        species_code,
-        breed,
-        birth_date,
-        gender,
-        weight,
-        photo_url,
-        allergies,
-        is_sterilized,
-        id,
-        req.user.id
+        name,               // $1
+        resolvedSpeciesCode,// $2 ✅
+        breed || null,      // $3
+        birth_date || null, // $4
+        gender || null,     // $5
+        resolvedWeight,     // $6 ✅
+        photo_url || null,  // $7
+        allergies || null,  // $8
+        is_sterilized ?? false, // $9
+        id,                 // $10
+        req.user.id         // $11
       ]
     );
 
@@ -393,6 +409,7 @@ router.put("/pets/:id", authorization, async (req, res) => {
     return res.status(500).json({ message: "Error al actualizar mascota" });
   }
 });
+
 
 // ========================================
 // 9. ELIMINAR MASCOTA

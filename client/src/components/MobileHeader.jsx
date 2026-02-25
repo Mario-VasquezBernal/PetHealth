@@ -22,7 +22,7 @@ const MobileHeader = ({ onMenuClick, onNewPet }) => {
         </button>
         <div className="flex items-center gap-2">
           <MapPin className="w-4 h-4 text-gray-600" strokeWidth={2} />
-          <span className="text-sm font-medium text-gray-900">Cuenca, Ecuador</span>
+          <span className="text-sm font-medium text-gray-900"></span>
         </div>
         {onNewPet && (
           <button 

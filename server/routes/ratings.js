@@ -4,7 +4,6 @@ const pool       = require('../db');
 const authorization = require('../middleware/authorization');
 const { body, validationResult } = require('express-validator');
 
-
 // ============================================
 // GET: Calificaciones de un veterinario (público)
 // ============================================
@@ -12,10 +11,12 @@ router.get('/veterinarian/:vetId', async (req, res) => {
   try {
     const { vetId } = req.params;
 
-
     const result = await pool.query(
       `SELECT
-         r.id, r.rating, r.comment, r.created_at,
+         r.id,
+         r.rating::int,
+         r.comment,
+         r.created_at,
          u.full_name AS user_name
        FROM veterinarian_ratings r
        JOIN users u ON r.user_id = u.id
@@ -24,26 +25,40 @@ router.get('/veterinarian/:vetId', async (req, res) => {
       [vetId]
     );
 
-
-    const stats = await pool.query(
+    const statsResult = await pool.query(
       `SELECT
-         COUNT(*)                        AS total,
-         ROUND(AVG(rating)::numeric, 2)  AS average,
-         MIN(rating)                     AS min_rating,
-         MAX(rating)                     AS max_rating
+         COUNT(*)::int                                    AS total,
+         COALESCE(ROUND(AVG(rating)::numeric, 1), 0)     AS average,
+         COUNT(*) FILTER (WHERE rating = 5)::int         AS five,
+         COUNT(*) FILTER (WHERE rating = 4)::int         AS four,
+         COUNT(*) FILTER (WHERE rating = 3)::int         AS three,
+         COUNT(*) FILTER (WHERE rating = 2)::int         AS two,
+         COUNT(*) FILTER (WHERE rating = 1)::int         AS one
        FROM veterinarian_ratings
        WHERE veterinarian_id = $1`,
       [vetId]
     );
 
+    const raw = statsResult.rows[0];
 
-    res.json({ ratings: result.rows, statistics: stats.rows[0] });
+    const statistics = {
+      total:   raw.total,
+      average: parseFloat(raw.average),  // nunca llega NaN ni string
+      distribution: {
+        5: raw.five,
+        4: raw.four,
+        3: raw.three,
+        2: raw.two,
+        1: raw.one
+      }
+    };
+
+    res.json({ ratings: result.rows, statistics });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al obtener calificaciones' });
   }
 });
-
 
 // ============================================
 // GET: Mis reseñas (usuario autenticado)
@@ -52,8 +67,12 @@ router.get('/my-reviews', authorization, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT
-         r.id, r.rating, r.comment, r.created_at,
-         v.name AS veterinarian_name, v.specialty
+         r.id,
+         r.rating::int,
+         r.comment,
+         r.created_at,
+         v.name AS veterinarian_name,
+         v.specialty
        FROM veterinarian_ratings r
        JOIN veterinarians v ON r.veterinarian_id = v.id
        WHERE r.user_id = $1
@@ -67,11 +86,8 @@ router.get('/my-reviews', authorization, async (req, res) => {
   }
 });
 
-
 // ============================================
 // POST: Crear calificación de veterinario
-// ✅ Solo si tuvo consulta real con ese vet
-// ✅ Una calificación por cita
 // ============================================
 router.post('/', [
   authorization,
@@ -94,10 +110,8 @@ router.post('/', [
       return res.status(400).json({ error: errors.array()[0].msg });
     }
 
-
-    const { veterinarian_id, appointment_id, rating, comment } = req.body; // ✅ FIX: extraer appointment_id
+    const { veterinarian_id, appointment_id, rating, comment } = req.body;
     const user_id = req.user.id;
-
 
     // 1. Verificar que el veterinario existe
     const vetCheck = await pool.query(
@@ -108,9 +122,7 @@ router.post('/', [
       return res.status(404).json({ error: 'Veterinario no encontrado' });
     }
 
-
-    // 2. ✅ Verificar que tuvo una consulta real con este vet
-    const vetName = vetCheck.rows[0].name;
+    // 2. Verificar que tuvo una consulta real con este vet
     const hasConsulted = await pool.query(`
       SELECT EXISTS (
         SELECT 1 FROM appointments
@@ -120,34 +132,28 @@ router.post('/', [
       ) AS can_rate
     `, [user_id, veterinarian_id]);
 
-
     if (!hasConsulted.rows[0].can_rate) {
       return res.status(403).json({
         error: 'Solo puedes calificar veterinarios con quienes hayas tenido una cita completada.'
       });
     }
 
-
-    // 3. ✅ Verificar que esa cita específica no tenga ya una calificación
+    // 3. Verificar que esa cita específica no tenga ya una calificación
     const existing = await pool.query(
-      'SELECT id FROM veterinarian_ratings WHERE appointment_id = $1', // ✅ FIX: por cita, no por vet+user
+      'SELECT id FROM veterinarian_ratings WHERE appointment_id = $1',
       [appointment_id]
     );
     if (existing.rows.length > 0) {
-      return res.status(409).json({
-        error: 'Esta cita ya tiene una calificación.'
-      });
+      return res.status(409).json({ error: 'Esta cita ya tiene una calificación.' });
     }
 
-
-    // 4. ✅ Guardar con appointment_id real
+    // 4. Guardar con appointment_id real
     const result = await pool.query(
       `INSERT INTO veterinarian_ratings 
          (veterinarian_id, user_id, appointment_id, rating, comment)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`, // ✅ FIX: appointment_id real, antes NULL
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
       [veterinarian_id, user_id, appointment_id, rating, comment || null]
     );
-
 
     res.status(201).json({ rating: result.rows[0] });
   } catch (error) {
@@ -155,7 +161,6 @@ router.post('/', [
     res.status(500).json({ error: 'Error al crear calificación' });
   }
 });
-
 
 // ============================================
 // PUT: BLOQUEADO — las reseñas no se editan
@@ -166,26 +171,22 @@ router.put('/:id', authorization, (req, res) => {
   });
 });
 
-
 // ============================================
 // DELETE: Eliminar reseña (solo el autor)
 // ============================================
 router.delete('/:id', authorization, async (req, res) => {
   try {
-    const { id }    = req.params;
-    const user_id   = req.user.id;
-
+    const { id }  = req.params;
+    const user_id = req.user.id;
 
     const result = await pool.query(
       'DELETE FROM veterinarian_ratings WHERE id=$1 AND user_id=$2 RETURNING *',
       [id, user_id]
     );
 
-
     if (result.rows.length === 0) {
       return res.status(403).json({ error: 'No autorizado para eliminar esta reseña' });
     }
-
 
     res.json({ message: 'Reseña eliminada' });
   } catch (error) {
@@ -193,6 +194,5 @@ router.delete('/:id', authorization, async (req, res) => {
     res.status(500).json({ error: 'Error al eliminar reseña' });
   }
 });
-
 
 module.exports = router;

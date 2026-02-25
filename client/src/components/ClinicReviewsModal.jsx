@@ -1,6 +1,3 @@
-// ============================================
-// COMPONENTS/ClinicReviewsModal.JSX
-// ============================================
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { X, Star, User, Calendar, MessageCircle, TrendingUp } from 'lucide-react';
@@ -47,11 +44,17 @@ const ClinicReviewsModal = ({ isOpen, onClose, clinic }) => {
   if (!isOpen || !clinic) return null;
 
   // ── Cálculos para el resumen ──
-  const total     = reviews.length;
-  const average   = total > 0 ? (reviews.reduce((sum, r) => sum + r.rating, 0) / total).toFixed(1) : '0.0';
+  const total = reviews.length;
+
+  // ✅ FIX: Number(r.rating) evita NaN por strings
+  const average = total > 0
+    ? (reviews.reduce((sum, r) => sum + Number(r.rating), 0) / total).toFixed(1)
+    : '0.0';
+
+  // ✅ FIX: Number(r.rating) === s para comparación correcta
   const starCounts = [5, 4, 3, 2, 1].map(s => ({
     stars: s,
-    count: reviews.filter(r => r.rating === s).length
+    count: reviews.filter(r => Number(r.rating) === s).length
   }));
 
   return (
